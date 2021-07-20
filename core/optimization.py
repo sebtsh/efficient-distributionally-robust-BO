@@ -9,7 +9,7 @@ from core.utils import get_maximizer
 
 
 def bayes_opt_loop(model: ModelOptModule,
-                   init_dataset: Dataset,
+                   init_dataset: Dataset or None,
                    search_points: TensorType,
                    observer: SingleObserver,
                    acq: Acquisition,

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Callable
 
 import numpy as np
 from trieste.type import TensorType
@@ -14,14 +15,19 @@ def GP_UCB_point(model: ModelOptModule,
     return domain[np.argmax(scores)][None, :]
 
 
-def get_acquisition(acq_name):
+def get_acquisition(acq_name,
+                    beta: Callable):
     """
     Acquisition function dispatcher.
     :param acq_name:
+    :param beta: Function of timestep
     :return:
     """
     args = dict(sorted(locals().items()))
-    pass  # unimplemented
+    if acq_name == 'GP-UCB':
+        return GP_UCB(**args)
+    else:
+        raise Exception('Acquisition name is wrong')
 
 
 class Acquisition(ABC):
@@ -52,7 +58,9 @@ class GP_UCB(Acquisition):
     """
     GP-UCB acquisition function from Srinivas et. al. (2010).
     """
-    def __init__(self, beta):
+    def __init__(self,
+                 beta: Callable,
+                 **kwargs):
         super().__init__()
         self.beta = beta
 
