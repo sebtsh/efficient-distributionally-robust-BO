@@ -77,6 +77,15 @@ def get_discrete_normal_dist_1d(context_points, mean, var):
     return np.squeeze((pdfs / np.sum(pdfs)))
 
 
+def get_discrete_uniform_dist_1d(context_points):
+    """
+    Returns an array of shape |C| that is a uniform probability distribution over the context set.
+    :param context_points: Array of shape (|C|, 1)
+    :return: array of shape (|C|, )
+    """
+    return np.ones(len(context_points)) * (1 / len(context_points))
+
+
 def cross_product(x, y):
     """
 
@@ -96,7 +105,7 @@ def adversarial_expectation(f: TensorType,
                             M: TensorType,
                             w_t: TensorType,
                             epsilon: float,
-                            divergence: str = "MMD"):
+                            divergence: str):
     """
     Calculates inf_Q E_{c~Q}[f(x, c)]
     :param f: Array of shape (|C|, ). We are adversarially minimizing the expectation of these values. Could be
@@ -104,7 +113,7 @@ def adversarial_expectation(f: TensorType,
     :param M: Array of shape (|C|, |C|). Kernel matrix for MMD
     :param w_t: Array of shape (|C|, ). Reference distribution
     :param epsilon: margin. Radius of ball around which we can choose our adversarial distribution
-    :param divergence: for now only "MMD"
+    :param divergence: str, either 'MMD' or 'TV'
     :return: value, w
     """
     num_context = len(f)
@@ -115,6 +124,10 @@ def adversarial_expectation(f: TensorType,
         constraints = [cp.sum(w) == 1.0,
                        w >= 0.,
                        cp.quad_form(w - w_t, M) <= epsilon ** 2]
+    elif divergence == "TV":
+        constraints = [cp.sum(w) == 1.0,
+                       w >= 0.,
+                       cp.norm(w - w_t, 1) <= epsilon]
     else:
         raise Exception("Incorrect divergence given")
 
@@ -128,6 +141,7 @@ def get_robust_expectation_and_action(action_points: TensorType,
                                       kernel: Kernel,
                                       fvals_source: str,
                                       ref_dist: TensorType,
+                                      divergence: str,
                                       epsilon: float,
                                       obj_func: Callable = None,
                                       model: ModelOptModule = None,
@@ -140,6 +154,7 @@ def get_robust_expectation_and_action(action_points: TensorType,
     :param kernel: gpflow kernel
     :param fvals_source: Either 'obj_func' or 'ucb'
     :param ref_dist: Array of shape (|C|)
+    :param divergence: str, 'MMD' or 'TV'
     :param epsilon: margin. Radius of ball around which we can choose our adversarial distribution
     :param obj_func: objective function
     :param model: ModelOptModule
@@ -150,21 +165,46 @@ def get_robust_expectation_and_action(action_points: TensorType,
     expectations = []
     for i in range(num_actions):
         domain = cross_product(action_points[i:i + 1], context_points)
-        M = kernel(domain)
+        if divergence == 'MMD':
+            M = kernel(domain)
+        else:
+            M = None
         if fvals_source == 'obj_func':
             f = np.squeeze(obj_func(domain), axis=-1)
         elif fvals_source == 'ucb':
-            f_mean, f_var = model.predict_f(domain)
-            f = np.squeeze(f_mean + beta * np.sqrt(f_var), axis=-1)
+            f, _ = get_upper_lower_bounds(model, domain, beta)
         else:
             raise Exception("Invalid fvals_source given")
         expectation, _ = adversarial_expectation(f=f,
                                                  M=M,
                                                  w_t=ref_dist,
-                                                 epsilon=epsilon)
+                                                 epsilon=epsilon,
+                                                 divergence=divergence)
         expectations.append(expectation)
     max_idx = np.argmax(expectations)
     return np.max(expectations), action_points[max_idx:max_idx + 1]
+
+
+def get_margin(ref_dist: TensorType,
+               true_dist: TensorType,
+               mmd_kernel: Kernel,
+               context_points: TensorType,
+               divergence: str):
+    """
+    Computes the divergence between the reference distribution and the true distribution.
+    :param ref_dist:
+    :param true_dist:
+    :param mmd_kernel:
+    :param context_points:
+    :param divergence: str, 'MMD' or 'TV'
+    :return:
+    """
+    if divergence == 'MMD':
+        return MMD(ref_dist, true_dist, mmd_kernel, context_points)
+    elif divergence == 'TV':
+        return TV(ref_dist, true_dist)
+    else:
+        raise Exception("Wrong divergence passed to get_margin")
 
 
 def MMD(w1: TensorType,
@@ -177,7 +217,17 @@ def MMD(w1: TensorType,
     :param w2: array of shape (|C|, )
     :param kernel: gpflow kernel
     :param context_points: array of shape (|C|, d_c)
-    :return:
+    :return: float
     """
     M = kernel(context_points)
     return np.sqrt((w1 - w2)[None, :] @ M @ (w1 - w2)[:, None])
+
+def TV(w1: TensorType,
+       w2: TensorType):
+    """
+    Calculates the total variation distance between 2 discrete distributions.
+    :param w1: array of shape (|C|, )
+    :param w2: array of shape (|C|, )
+    :return: float
+    """
+    return np.linalg.norm(w1 - w2, ord=1)

@@ -1,5 +1,6 @@
 import numpy as np
 
+from gpflow.kernels import Kernel
 from typing import Callable
 from tqdm import trange
 from trieste.data import Dataset
@@ -71,6 +72,8 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
                                reference_dist_func: Callable,
                                true_dist_func: Callable,
                                margin_func: Callable,
+                               divergence: str,
+                               mmd_kernel: Kernel,
                                optimize_gp: bool = True):
     """
     Main distributionally robust Bayesian optimization loop.
@@ -86,6 +89,8 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
     :param true_dist_func: A function that takes in a timestep and returns an array of shape |C|, the size
     of the context set that is a valid probability distribution (sums to 1).
     :param margin_func: A function that takes in a timestep and returns epsilon_t
+    :param divergence: str, 'MMD' or 'TV'
+    :param kernel: GPflow kernel. For MMD
     :param optimize_gp:
     :return:
     """
@@ -103,6 +108,8 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
                              context_points=context_points,
                              t=t,
                              ref_dist=ref_dist,
+                             divergence=divergence,
+                             kernel=mmd_kernel,
                              epsilon=epsilon)  # TensorType of shape (1, d_x)
         if action is None:  # Early termination signal
             print("Early termination at timestep t={}".format(t))
