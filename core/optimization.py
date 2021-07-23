@@ -63,7 +63,7 @@ def bayes_opt_loop(model: ModelOptModule,
 
 def bayes_opt_loop_dist_robust(model: ModelOptModule,
                                init_dataset: Dataset or None,
-                               search_points: TensorType,
+                               action_points: TensorType,
                                context_points: TensorType,
                                observer: SingleObserver,
                                acq: Acquisition,
@@ -76,16 +76,16 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
     Main distributionally robust Bayesian optimization loop.
     :param model:
     :param init_dataset:
-    :param search_points:
+    :param action_points:
     :param context_points:
     :param observer:
     :param acq:
     :param num_iters:
-    :param reference_dist_generator: A function that takes in a timestep and returns an array of shape |C|, the size
+    :param reference_dist_func: A function that takes in a timestep and returns an array of shape |C|, the size
     of the context set that is a valid probability distribution (sums to 1).
-    :param true_dist_generator: A function that takes in a timestep and returns an array of shape |C|, the size
+    :param true_dist_func: A function that takes in a timestep and returns an array of shape |C|, the size
     of the context set that is a valid probability distribution (sums to 1).
-    :margin_func: A function that takes in a timestep and returns epsilon_t
+    :param margin_func: A function that takes in a timestep and returns epsilon_t
     :param optimize_gp:
     :return:
     """
@@ -98,7 +98,12 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
         epsilon = margin_func(t)
 
         # Acquire next input locations to sample
-        action = acq.acquire(model, search_points, t, ref_dist, epsilon)  # TensorType of shape (1, d_x)
+        action = acq.acquire(model=model,
+                             action_points=action_points,
+                             context_points=context_points,
+                             t=t,
+                             ref_dist=ref_dist,
+                             epsilon=epsilon)  # TensorType of shape (1, d_x)
         if action is None:  # Early termination signal
             print("Early termination at timestep t={}".format(t))
             return dataset, maximizers, model_params
@@ -124,4 +129,4 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
         # Save model parameters at this timestep
         model_params.append(model.get_params())
 
-    return dataset, maximizers, model_params
+    return dataset, model_params

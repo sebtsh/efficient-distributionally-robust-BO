@@ -21,10 +21,13 @@ import plotly.graph_objects as go
 import tensorflow as tf
 from matplotlib import cm
 from plotly.subplots import make_subplots
+from tqdm import trange
 from trieste.acquisition import AcquisitionFunction
 from trieste.type import TensorType
 from trieste.utils import to_numpy
 from trieste.utils.pareto import non_dominated
+
+from core.utils import cross_product, adversarial_expectation, get_robust_expectation_and_action
 
 
 def create_grid(mins: TensorType, maxs: TensorType, grid_density=20):
@@ -176,16 +179,16 @@ def plot_function_2d(
 
 
 def plot_acq_function_2d(
-    acq_func: AcquisitionFunction,
-    mins: TensorType,
-    maxs: TensorType,
-    grid_density: int = 20,
-    contour=False,
-    log=False,
-    title=None,
-    xlabel=None,
-    ylabel=None,
-    figsize=None,
+        acq_func: AcquisitionFunction,
+        mins: TensorType,
+        maxs: TensorType,
+        grid_density: int = 20,
+        contour=False,
+        log=False,
+        title=None,
+        xlabel=None,
+        ylabel=None,
+        figsize=None,
 ):
     """
     Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between mins and maxs
@@ -210,15 +213,15 @@ def plot_acq_function_2d(
 
 
 def format_point_markers(
-    num_pts,
-    num_init=None,
-    idx_best=None,
-    mask_fail=None,
-    m_init="x",
-    m_add="o",
-    c_pass="tab:green",
-    c_fail="tab:red",
-    c_best="tab:purple",
+        num_pts,
+        num_init=None,
+        idx_best=None,
+        mask_fail=None,
+        m_init="x",
+        m_add="o",
+        c_pass="tab:green",
+        c_fail="tab:red",
+        c_best="tab:purple",
 ):
     """
     Prepares point marker styles according to some BO factors
@@ -279,17 +282,17 @@ def plot_bo_points_2d(query_points,
 
 
 def plot_bo_points(
-    pts,
-    ax,
-    num_init=None,
-    idx_best=None,
-    mask_fail=None,
-    obs_values=None,
-    m_init="x",
-    m_add="o",
-    c_pass="tab:green",
-    c_fail="tab:red",
-    c_best="tab:purple",
+        pts,
+        ax,
+        num_init=None,
+        idx_best=None,
+        mask_fail=None,
+        obs_values=None,
+        m_init="x",
+        m_add="o",
+        c_pass="tab:green",
+        c_fail="tab:red",
+        c_best="tab:purple",
 ):
     """
     Adds scatter points to an existing subfigure. Markers and colors are chosen according to BO factors.
@@ -316,20 +319,20 @@ def plot_bo_points(
 
 
 def plot_mobo_points_in_obj_space(
-    obs_values,
-    num_init=None,
-    mask_fail=None,
-    figsize=None,
-    xlabel="Obj 1",
-    ylabel="Obj 2",
-    zlabel="Obj 3",
-    title=None,
-    m_init="x",
-    m_add="o",
-    c_pass="tab:green",
-    c_fail="tab:red",
-    c_pareto="tab:purple",
-    only_plot_pareto=False,
+        obs_values,
+        num_init=None,
+        mask_fail=None,
+        figsize=None,
+        xlabel="Obj 1",
+        ylabel="Obj 2",
+        zlabel="Obj 3",
+        title=None,
+        m_init="x",
+        m_add="o",
+        c_pass="tab:green",
+        c_fail="tab:red",
+        c_pareto="tab:purple",
+        only_plot_pareto=False,
 ):
     """
     Adds scatter points in objective space, used for multi-objective optimization (2 objective only).
@@ -382,11 +385,11 @@ def plot_mobo_points_in_obj_space(
 
 
 def plot_mobo_history(
-    obs_values,
-    metric_func,
-    num_init=None,
-    mask_fail=None,
-    figsize=None,
+        obs_values,
+        metric_func,
+        num_init=None,
+        mask_fail=None,
+        figsize=None,
 ):
     """
     Draw the performance measure for multi-objective optimization
@@ -410,9 +413,9 @@ def plot_mobo_history(
 
 
 def plot_regret(obj_func,
-                maximizers,
                 search_points,
                 query_points,
+                maximizers=None,
                 regret_type='immediate',
                 fvals_source='best_seen',
                 figsize=None,
@@ -423,8 +426,8 @@ def plot_regret(obj_func,
     :param maximizers:
     :param search_points:
     :param query_points:
-    :param regret_type: Either 'immediate' or 'average'
-    :param fvals_source: Either 'gp_belief' or 'best_seen'
+    :param regret_type: Either 'immediate', 'average', or cumulative
+    :param fvals_source: Either 'gp_belief', 'best_seen', or 'queries'
     :param figsize:
     :param dpi:
     :return:
@@ -440,18 +443,61 @@ def plot_regret(obj_func,
         for i in range(len(query_points)):
             max_fvals.append(np.max(query_fvals[:i + 1]))
         regret = global_max - np.array(max_fvals)
+    elif fvals_source == 'queries':
+        regret = np.squeeze(global_max - obj_func(query_points))
     else:
         raise Exception("Wrong parameters passed to plot_regret")
     if regret_type == 'immediate':
-        ax.plot(np.arange(0, len(maximizers)), regret, marker='x')
+        ax.plot(np.arange(0, len(regret)), regret, marker='x')
     elif regret_type == 'average':
         averages = []
         for i in range(len(maximizers)):
             averages.append(np.mean(regret[:i + 1]))
-        ax.plot(np.arange(0, len(maximizers)), averages, marker='x')
+        ax.plot(np.arange(0, len(averages)), averages, marker='x')
     else:
         raise Exception("Wrong parameters passed to plot_regret")
     ax.set_title(regret_type + ' regret')
+    return fig, ax
+
+
+def plot_robust_regret(obj_func,
+                       query_points,
+                       action_points,
+                       context_points,
+                       kernel,
+                       ref_dist_func,
+                       margin_func,
+                       figsize=None,
+                       dpi=None):
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+    regrets = []
+    cumulative_regrets = []
+    print("Plotting cumulative robust regret")
+    M = kernel(context_points)
+    for t in trange(len(query_points)):
+        domain = cross_product(query_points[t:t + 1, 0:1], context_points)
+        f = obj_func(domain)
+        query_expectation, w = adversarial_expectation(f=f, M=M, w_t=ref_dist_func(t), epsilon=margin_func(t))
+        robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
+                                                                              context_points=context_points,
+                                                                              kernel=kernel,
+                                                                              fvals_source='obj_func',
+                                                                              ref_dist=ref_dist_func(t),
+                                                                              epsilon=margin_func(t),
+                                                                              obj_func=obj_func)
+        print("t = {}".format(t))
+        print("query_point = {}".format(query_points[t:t + 1, 0:1]))
+        print("robust_action = {}".format(robust_action))
+        print("robust_expectation = {}".format(robust_expectation))
+        print("query_expectation = {}".format(query_expectation))
+        adv_mean = w @ context_points
+        adv_var = w @ ((context_points - adv_mean) ** 2)
+        print("adversarially chosen distribution has mean = {} and variance = {}".format(adv_mean, adv_var))
+        print("===========")
+        regrets.append(robust_expectation - query_expectation)
+        cumulative_regrets.append(np.sum(regrets))
+    ax.plot(np.arange(0, len(regrets)), cumulative_regrets, marker='x')
+    ax.set_title('Cumulative robust regret')
     return fig, ax
 
 
@@ -504,15 +550,15 @@ def plot_gp_1d(model,
 
 
 def plot_gp_2d(
-    model,
-    mins: TensorType,
-    maxs: TensorType,
-    grid_density: int = 20,
-    contour=False,
-    xlabel=None,
-    ylabel=None,
-    figsize=None,
-    predict_y=False,
+        model,
+        mins: TensorType,
+        maxs: TensorType,
+        grid_density: int = 20,
+        contour=False,
+        xlabel=None,
+        ylabel=None,
+        figsize=None,
+        predict_y=False,
 ):
     """
     2D/3D plot of a gp model for a grid of size grid_density**2 between mins and maxs
@@ -578,16 +624,17 @@ def plot_gp_2d(
 
     return fig, ax
 
+
 def format_point_markers(
-    num_pts,
-    num_init,
-    idx_best=None,
-    mask_fail=None,
-    m_init="x",
-    m_add="circle",
-    c_pass="green",
-    c_fail="red",
-    c_best="darkmagenta",
+        num_pts,
+        num_init,
+        idx_best=None,
+        mask_fail=None,
+        m_init="x",
+        m_add="circle",
+        c_pass="green",
+        c_fail="red",
+        c_best="darkmagenta",
 ):
     """
     Prepares point marker styles according to some BO factors
@@ -709,14 +756,14 @@ def plot_gp_plotly(model, mins: TensorType, maxs: TensorType, grid_density=20):
 
 
 def plot_function_plotly(
-    obj_func,
-    mins: TensorType,
-    maxs: TensorType,
-    grid_density=20,
-    title=None,
-    xlabel=None,
-    ylabel=None,
-    alpha=1.0,
+        obj_func,
+        mins: TensorType,
+        maxs: TensorType,
+        grid_density=20,
+        title=None,
+        xlabel=None,
+        ylabel=None,
+        alpha=1.0,
 ):
     """
     Draws an objective function.
