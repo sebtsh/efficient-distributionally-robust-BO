@@ -21,7 +21,7 @@ ex.observers.append(FileStorageObserver('runs'))
 def rand_func():
     acq_name = 'GP-UCB'
     obj_func_name = 'rand_func'
-    divergence = 'MMD'  # 'MMD' or 'TV'
+    divergence = 'MMD'  # 'MMD', 'TV' or 'modified_chi_squared'' or 'modified_chi_squared'
     dims = 2
     lowers = [0] * dims
     uppers = [1] * dims
@@ -32,13 +32,13 @@ def rand_func():
     is_optimizing_gp = False
     opt_max_iter = 10
     num_bo_iters = 200
-    num_init_points = 3
+    num_init_points = 5
     beta_const = 1
     ref_mean = 0.5
     ref_var = 0.05
     true_mean = 0.2
     true_var = 0.05
-    seed = 1
+    seed = 2
 
 
 @ex.automain
@@ -118,6 +118,7 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
                                kernel=mmd_kernel,
                                ref_dist_func=ref_dist_func,
                                margin_func=margin_func,
-                               divergence=divergence)
+                               divergence=divergence,
+                               title=acq_name + " " + divergence + ", beta = {}".format(beta_const))
 
     plt.show()

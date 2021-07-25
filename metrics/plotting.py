@@ -468,6 +468,7 @@ def plot_robust_regret(obj_func,
                        ref_dist_func,
                        margin_func,
                        divergence,
+                       title="",
                        figsize=None,
                        dpi=None):
     fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
@@ -504,7 +505,7 @@ def plot_robust_regret(obj_func,
         regrets.append(robust_expectation - query_expectation)
         cumulative_regrets.append(np.sum(regrets))
     ax.plot(np.arange(0, len(regrets)), cumulative_regrets, marker='x')
-    ax.set_title('Cumulative robust regret')
+    ax.set_title(title)
     return fig, ax
 
 

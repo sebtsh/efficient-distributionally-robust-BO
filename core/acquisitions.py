@@ -64,7 +64,7 @@ class Acquisition(ABC):
         :param context_points: TensorType
         :param t: Timestep
         :param ref_dist: Array of shape |C| that is a probability distribution
-        :param divergence: str, 'MMD' or 'TV'
+        :param divergence: str, 'MMD', 'TV' or 'modified_chi_squared''
         :param kernel: gpflow kernel
         :param epsilon: margin
         :return: array of shape (b, d)
@@ -141,8 +141,13 @@ class DRBOWorstCaseSens(Acquisition):
             elif divergence == 'TV':
                 worst_case_sensitivity = 0.5 * (np.max(ucb_vals) - np.min(ucb_vals))
                 sens_factor = epsilon  # might be square root epsilon for others
-                adv_lower_bound = expected_ucb - (sens_factor * worst_case_sensitivity)
-                adv_lower_bounds.append(adv_lower_bound)
+            elif divergence == 'modified_chi_squared':
+                worst_case_sensitivity = np.sqrt(2 * np.var(ucb_vals))
+                sens_factor = np.sqrt(epsilon)
+            else:
+                raise Exception("Invalid divergence passed to DRBOWorstCaseSens")
+            adv_lower_bound = expected_ucb - (sens_factor * worst_case_sensitivity)
+            adv_lower_bounds.append(adv_lower_bound)
         max_idx = np.argmax(adv_lower_bounds)
         return action_points[max_idx:max_idx + 1]
 

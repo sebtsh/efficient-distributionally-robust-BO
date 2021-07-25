@@ -113,7 +113,7 @@ def adversarial_expectation(f: TensorType,
     :param M: Array of shape (|C|, |C|). Kernel matrix for MMD
     :param w_t: Array of shape (|C|, ). Reference distribution
     :param epsilon: margin. Radius of ball around which we can choose our adversarial distribution
-    :param divergence: str, either 'MMD' or 'TV'
+    :param divergence: str, either 'MMD', 'TV' or 'modified_chi_squared'
     :return: value, w
     """
     num_context = len(f)
@@ -128,6 +128,11 @@ def adversarial_expectation(f: TensorType,
         constraints = [cp.sum(w) == 1.0,
                        w >= 0.,
                        cp.norm(w - w_t, 1) <= epsilon]
+    elif divergence == "modified_chi_squared":
+        phi = lambda x: 0.5 * ((x - 1) ** 2)
+        constraints = [cp.sum(w) == 1.0,
+                       w >= 0.,
+                       w_t @ phi(w / w_t) <= epsilon]
     else:
         raise Exception("Incorrect divergence given")
 
@@ -154,7 +159,7 @@ def get_robust_expectation_and_action(action_points: TensorType,
     :param kernel: gpflow kernel
     :param fvals_source: Either 'obj_func' or 'ucb'
     :param ref_dist: Array of shape (|C|)
-    :param divergence: str, 'MMD' or 'TV'
+    :param divergence: str, 'MMD', 'TV' or 'modified_chi_squared''
     :param epsilon: margin. Radius of ball around which we can choose our adversarial distribution
     :param obj_func: objective function
     :param model: ModelOptModule
@@ -196,13 +201,15 @@ def get_margin(ref_dist: TensorType,
     :param true_dist:
     :param mmd_kernel:
     :param context_points:
-    :param divergence: str, 'MMD' or 'TV'
+    :param divergence: str, 'MMD', 'TV' or 'modified_chi_squared''
     :return:
     """
     if divergence == 'MMD':
         return MMD(ref_dist, true_dist, mmd_kernel, context_points)
     elif divergence == 'TV':
         return TV(ref_dist, true_dist)
+    elif divergence == 'modified_chi_squared':
+        return modified_chi_squared(ref_dist, true_dist)
     else:
         raise Exception("Wrong divergence passed to get_margin")
 
@@ -222,6 +229,7 @@ def MMD(w1: TensorType,
     M = kernel(context_points)
     return np.sqrt((w1 - w2)[None, :] @ M @ (w1 - w2)[:, None])
 
+
 def TV(w1: TensorType,
        w2: TensorType):
     """
@@ -231,3 +239,16 @@ def TV(w1: TensorType,
     :return: float
     """
     return np.linalg.norm(w1 - w2, ord=1)
+
+
+def modified_chi_squared(w1: TensorType,
+                         w2: TensorType):
+    """
+    Calculates the modified chi-squared phi-divergence between 2 discrete distributions. Calculates the divergence
+    of w1 from w2, i.e. takes expectation of (w1/w2) under w2's distribution
+    :param w1: array of shape (|C|, )
+    :param w2: array of shape (|C|, )
+    :return: float
+    """
+    phi = lambda x: 0.5 * ((x - 1) ** 2)
+    return w2 @ phi(w1 / w2)

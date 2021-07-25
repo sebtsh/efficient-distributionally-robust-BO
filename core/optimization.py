@@ -89,7 +89,7 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
     :param true_dist_func: A function that takes in a timestep and returns an array of shape |C|, the size
     of the context set that is a valid probability distribution (sums to 1).
     :param margin_func: A function that takes in a timestep and returns epsilon_t
-    :param divergence: str, 'MMD' or 'TV'
+    :param divergence: str, 'MMD', 'TV' or 'modified_chi_squared''
     :param kernel: GPflow kernel. For MMD
     :param optimize_gp:
     :return:
