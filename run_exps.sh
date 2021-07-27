@@ -9,7 +9,13 @@ do
   do
     for seed in {0..10}
     do
-      CUDA_VISIBLE_DEVICES=0 nohup python exp.py with rand_func acq_name="$acquisition" divergence="$divergence" seed=$seed &>/dev/null &
+      if [[ $acquisition = 'DRBOWorstCaseSens' ]]
+      then
+        beta=0
+      else
+        beta=2
+      fi
+      CUDA_VISIBLE_DEVICES=0 nohup python exp.py with rand_func acq_name="$acquisition" divergence="$divergence" seed=$seed beta_const=$beta &>/dev/null &
     done
   done
 done
