@@ -32,13 +32,13 @@ def rand_func():
     is_optimizing_gp = False
     opt_max_iter = 10
     num_bo_iters = 200
-    num_init_points = 5
-    beta_const = 1
+    num_init_points = 20
+    beta_const = 0
     ref_mean = 0.5
     ref_var = 0.05
     true_mean = 0.2
     true_var = 0.05
-    seed = 2
+    seed = 3
 
 
 @ex.automain
@@ -104,7 +104,7 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
     query_points = final_dataset.query_points.numpy()
     maximizer = search_points[[np.argmax(obj_func(search_points))]]
     if dims == 2:
-        title = obj_func_name + ", " + acq_name + " " + divergence + ", beta = {}".format(beta_const)
+        title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}".format(beta_const)
         _, ax = plot_function_2d(obj_func, lowers, uppers, grid_density_per_dim, contour=True,
                                  title=title, colorbar=True)
         plot_bo_points_2d(query_points, ax, num_init=num_init_points, maximizer=maximizer)
@@ -119,6 +119,6 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
                                ref_dist_func=ref_dist_func,
                                margin_func=margin_func,
                                divergence=divergence,
-                               title=acq_name + " " + divergence + ", beta = {}".format(beta_const))
+                               title=title)
 
     plt.show()

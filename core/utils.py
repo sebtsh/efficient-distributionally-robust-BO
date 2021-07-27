@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import cvxpy as cp
 from typing import Callable
+import gpflow as gpf
 from gpflow.models.model import GPModel
 from gpflow.kernels import Kernel
 from trieste.space import Box, DiscreteSearchSpace
@@ -55,11 +56,19 @@ def get_upper_lower_bounds(model,
 def cholesky_inverse(M):
     """
     Computes the inverse of M using the Cholesky decomposition. M must be a positive definite matrix.
-    :param M: shape (b, m, m)
+    :param M: shape (b, m, m) or (m, m)
     :return:
     """
-    inv_L = np.linalg.inv(np.linalg.cholesky(M))
-    P = np.transpose(inv_L, [0, 2, 1])
+    if len(M.shape) == 3:
+        b, m, _ = M.shape
+        inv_L = np.linalg.inv(np.linalg.cholesky(M + gpf.config.default_jitter() * np.eye(m)[None, :, :]))
+        P = np.transpose(inv_L, [0, 2, 1])
+    elif len(M.shape) == 2:
+        m, _ = M.shape
+        inv_L = np.linalg.inv(np.linalg.cholesky(M + gpf.config.default_jitter() * np.eye(m)))
+        P = np.transpose(inv_L)
+    else:
+        raise Exception("Wrong shape passed to cholesky_inverse")
     return P @ inv_L
 
 
