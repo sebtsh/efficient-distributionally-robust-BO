@@ -113,14 +113,16 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
         fig, ax = plot_function_2d(obj_func, lowers, uppers, grid_density_per_dim, contour=True,
                                    title=title, colorbar=True)
         plot_bo_points_2d(query_points, ax, num_init=num_init_points, maximizer=maximizer)
-        fig.savefig("runs/plots/obj_func-{}-{}-{}.png".format(divergence,
-                                                              acq_name,
-                                                              seed))
+        fig.savefig("runs/plots/{}-{}-{}-{}-obj_func.png".format(obj_func_name,
+                                                                 divergence,
+                                                                 acq_name,
+                                                                 seed))
 
         fig, ax = plot_gp_2d(model.gp, mins=lowers, maxs=uppers, grid_density=grid_density_per_dim,
-                             save_location="runs/plots/gp-{}-{}-{}.png".format(divergence,
-                                                                               acq_name,
-                                                                               seed))
+                             save_location="runs/plots/{}-{}-{}-{}-gp.png".format(obj_func_name,
+                                                                                  divergence,
+                                                                                  acq_name,
+                                                                                  seed))
 
     fig, ax, regrets, cumulative_regrets = plot_robust_regret(obj_func=obj_func,
                                                               query_points=query_points,
@@ -131,14 +133,16 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
                                                               margin_func=margin_func,
                                                               divergence=divergence,
                                                               title=title)
-    fig.savefig("runs/plots/regret-{}-{}-{}.png".format(divergence,
-                                                        acq_name,
-                                                        seed))
+    fig.savefig("runs/plots/{}-{}-{}-{}-regret.png".format(obj_func_name,
+                                                           divergence,
+                                                           acq_name,
+                                                           seed))
 
     pickle.dump((regrets, cumulative_regrets, average_acq_time, query_points),
-                open("runs/{}-{}-seed{}.p".format(divergence,
-                                                  acq_name,
-                                                  seed), "wb"))
+                open("runs/{}-{}-{}-seed{}.p".format(obj_func_name,
+                                                     divergence,
+                                                     acq_name,
+                                                     seed), "wb"))
 
     if show_plots:
         plt.show()

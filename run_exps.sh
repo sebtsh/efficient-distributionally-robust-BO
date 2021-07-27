@@ -9,7 +9,7 @@ do
   do
     for seed in {0..10}
     do
-      echo "Running exp for $divergence $acquisition $seed"
+      CUDA_VISIBLE_DEVICES=0 python exp.py with rand_func acq_name="$acquisition" divergence="$divergence" seed=$seed
     done
   done
 done
