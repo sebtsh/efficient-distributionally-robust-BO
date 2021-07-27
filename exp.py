@@ -41,12 +41,13 @@ def rand_func():
     true_mean = 0.2
     true_var = 0.05
     seed = 2
+    show_plots = False
 
 
 @ex.automain
 def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_dim, rand_func_num_points,
          dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_const,
-         ref_mean, ref_var, true_mean, true_var, seed):
+         ref_mean, ref_var, true_mean, true_var, seed, show_plots):
     np.random.seed(seed)
 
     f_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls] * dims)
@@ -88,26 +89,27 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
     print("Using margin = {}".format(margin))
 
     # Main BO loop
-    final_dataset, model_params = bayes_opt_loop_dist_robust(model=model,
-                                                             init_dataset=init_dataset,
-                                                             action_points=action_points,
-                                                             context_points=context_points,
-                                                             observer=observer,
-                                                             acq=acquisition,
-                                                             num_iters=num_bo_iters,
-                                                             reference_dist_func=ref_dist_func,
-                                                             true_dist_func=true_dist_func,
-                                                             margin_func=margin_func,
-                                                             divergence=divergence,
-                                                             mmd_kernel=mmd_kernel,
-                                                             optimize_gp=is_optimizing_gp)
+    final_dataset, model_params, average_acq_time = bayes_opt_loop_dist_robust(model=model,
+                                                                               init_dataset=init_dataset,
+                                                                               action_points=action_points,
+                                                                               context_points=context_points,
+                                                                               observer=observer,
+                                                                               acq=acquisition,
+                                                                               num_iters=num_bo_iters,
+                                                                               reference_dist_func=ref_dist_func,
+                                                                               true_dist_func=true_dist_func,
+                                                                               margin_func=margin_func,
+                                                                               divergence=divergence,
+                                                                               mmd_kernel=mmd_kernel,
+                                                                               optimize_gp=is_optimizing_gp)
     print("Final dataset: {}".format(final_dataset))
+    print("Average acquisition time in seconds: {}".format(average_acq_time))
     # Plots
     query_points = final_dataset.query_points.numpy()
     maximizer = search_points[[np.argmax(obj_func(search_points))]]
+    title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}".format(beta_const)
     if dims == 2:
         Path("runs/plots").mkdir(parents=True, exist_ok=True)
-        title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}".format(beta_const)
         fig, ax = plot_function_2d(obj_func, lowers, uppers, grid_density_per_dim, contour=True,
                                    title=title, colorbar=True)
         plot_bo_points_2d(query_points, ax, num_init=num_init_points, maximizer=maximizer)
@@ -132,7 +134,11 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
     fig.savefig("runs/plots/regret-{}-{}-{}.png".format(divergence,
                                                         acq_name,
                                                         seed))
-    pickle.dump((regrets, cumulative_regrets, query_points), open("runs/{}-{}-seed{}.p".format(divergence,
-                                                                                               acq_name,
-                                                                                               seed), "wb"))
-    plt.show()
+
+    pickle.dump((regrets, cumulative_regrets, average_acq_time, query_points),
+                open("runs/{}-{}-seed{}.p".format(divergence,
+                                                  acq_name,
+                                                  seed), "wb"))
+
+    if show_plots:
+        plt.show()

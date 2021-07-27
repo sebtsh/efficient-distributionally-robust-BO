@@ -1,11 +1,12 @@
 import numpy as np
 
 from gpflow.kernels import Kernel
-from typing import Callable
+from timeit import default_timer as timer
 from tqdm import trange
 from trieste.data import Dataset
 from trieste.observer import SingleObserver
 from trieste.type import TensorType
+from typing import Callable
 
 from core.acquisitions import Acquisition
 from core.models import ModelOptModule
@@ -97,12 +98,14 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
     dataset = init_dataset
     maximizers = []
     model_params = []
+    times = []
     for t in trange(num_iters):
         # Get reference distribution
         ref_dist = reference_dist_func(t)
         epsilon = margin_func(t)
 
         # Acquire next input locations to sample
+        start = timer()
         action = acq.acquire(model=model,
                              action_points=action_points,
                              context_points=context_points,
@@ -111,6 +114,8 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
                              divergence=divergence,
                              kernel=mmd_kernel,
                              epsilon=epsilon)  # TensorType of shape (1, d_x)
+        end = timer()
+        times.append(end - start)  # Time taken to acquire in seconds
         if action is None:  # Early termination signal
             print("Early termination at timestep t={}".format(t))
             return dataset, maximizers, model_params
@@ -136,4 +141,4 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
         # Save model parameters at this timestep
         model_params.append(model.get_params())
 
-    return dataset, model_params
+    return dataset, model_params, np.mean(times)
