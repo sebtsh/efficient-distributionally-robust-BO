@@ -19,7 +19,7 @@ def default():
 
 
 @ex.automain
-def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, figsize=None, dpi=None):
+def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, figsize=(15, 6), dpi=None):
     Path("runs/results").mkdir(parents=True, exist_ok=True)
     divergences = ['MMD', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens']
@@ -30,12 +30,13 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, fi
 
     for divergence in divergences:
         fig, axs = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
-        axs[0, 0].set_title("{}-{}: Immediate robust regret".format(obj_func_name, divergence))
-        axs[0, 1].set_title("{}-{}: Cumulative robust regret".format(obj_func_name, divergence))
+        axs[0].set_title("{}-{}: Immediate robust regret".format(obj_func_name, divergence))
+        axs[1].set_title("{}-{}: Cumulative robust regret".format(obj_func_name, divergence))
         for acquisition in acquisitions:
             color = color_dict[acquisition]
             all_regrets = np.zeros((num_seeds, num_bo_iters))
             all_cumu_regrets = np.zeros((num_seeds, num_bo_iters))
+            all_times = []
             for seed in range(num_seeds):
                 regrets, cumulative_regrets, average_acq_time, query_points = pickle.load(
                     open("runs/{}-{}-{}-seed{}.p".format(obj_func_name,
@@ -48,22 +49,28 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, fi
                 cumulative_regrets = np.array(cumulative_regrets[num_init_points:]) - base_cumulative_regret
                 all_regrets[seed] = regrets
                 all_cumu_regrets[seed] = cumulative_regrets
+                all_times.append(average_acq_time)
             mean_regrets = np.mean(all_regrets, axis=0)
             std_err_regrets = np.std(all_regrets, axis=0) / np.sqrt(num_seeds)
             mean_cumu_regrets = np.mean(all_cumu_regrets, axis=0)
             std_err_cumu_regrets = np.std(all_cumu_regrets, axis=0) / np.sqrt(num_seeds)
 
             # Immediate regret
-            axs[0, 0].plot(x, mean_regrets, label=acquisition, color=color)
-            axs[0, 0].fill_between(x, mean_regrets-std_err_regrets, mean_regrets+std_err_regrets,
+            axs[0].plot(x, mean_regrets, label=acquisition, color=color)
+            axs[0].fill_between(x, mean_regrets-std_err_regrets, mean_regrets+std_err_regrets,
                                    alpha=0.2, color=color)
-            axs[0, 0].legend()
+            axs[0].legend()
 
             # Cumulative regret
-            axs[0, 1].plot(x, mean_cumu_regrets, label=acquisition, color=color)
-            axs[0, 1].fill_between(x, mean_cumu_regrets-std_err_cumu_regrets, mean_cumu_regrets+std_err_cumu_regrets,
+            axs[1].plot(x, mean_cumu_regrets, label=acquisition, color=color)
+            axs[1].fill_between(x, mean_cumu_regrets-std_err_cumu_regrets, mean_cumu_regrets+std_err_cumu_regrets,
                                    alpha=0.2, color=color)
-            axs[0, 1].legend()
+            axs[1].legend()
+
+            # Average acquisition time
+            print("{}-{} average acquisition time in seconds: {}".format(divergence,
+                acquisition,
+                np.mean(average_acq_time)))
         fig.savefig("runs/results/{}-{}-regret.png".format(obj_func_name,
                                                            divergence))
     if show_plots:
