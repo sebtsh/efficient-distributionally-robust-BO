@@ -9,7 +9,7 @@ do
   do
     for seed in {0..10}
     do
-      CUDA_VISIBLE_DEVICES=0 python exp.py with rand_func acq_name="$acquisition" divergence="$divergence" seed=$seed
+      CUDA_VISIBLE_DEVICES=0 nohup python exp.py with rand_func acq_name="$acquisition" divergence="$divergence" seed=$seed &>/dev/null &
     done
   done
 done
