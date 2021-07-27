@@ -506,7 +506,7 @@ def plot_robust_regret(obj_func,
         cumulative_regrets.append(np.sum(regrets))
     ax.plot(np.arange(0, len(regrets)), cumulative_regrets, marker='x')
     ax.set_title(title)
-    return fig, ax
+    return fig, ax, regrets, cumulative_regrets
 
 
 def plot_gp_1d(model,
@@ -567,6 +567,7 @@ def plot_gp_2d(
         ylabel=None,
         figsize=None,
         predict_y=False,
+        save_location=None,
 ):
     """
     2D/3D plot of a gp model for a grid of size grid_density**2 between mins and maxs
@@ -595,7 +596,7 @@ def plot_gp_2d(
     for i in range(2):
         if contour:
             fig, ax = plt.subplots(
-                n_output, 1, squeeze=False, sharex="all", sharey="all", figsize=figsize  # TODO: Change 1 to 2 if want to plot variance later
+                n_output, 1, squeeze=False, sharex="all", sharey="all", figsize=figsize
             )
             ax[0, 0].set_xlim(mins[0], maxs[0])
             ax[0, 0].set_ylim(mins[1], maxs[1])
@@ -636,6 +637,8 @@ def plot_gp_2d(
                 axx.set_ylabel(ylabel)
                 axx.set_xlim(mins[0], maxs[0])
                 axx.set_ylim(mins[1], maxs[1])
+        if save_location is not None:
+            fig.savefig(save_location)
 
     return fig, ax
 
