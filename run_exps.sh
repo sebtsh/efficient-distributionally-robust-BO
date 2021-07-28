@@ -7,11 +7,11 @@ for divergence in "${divergences[@]}"
 do
   for acquisition in "${acquisitions[@]}"
   do
-    for seed in {0..10}
+    for ((seed=$1; seed <= $2; seed++))
     do
       if [[ $acquisition = 'DRBOWorstCaseSens' ]]
       then
-        beta=0
+        beta=$3
       else
         beta=2
       fi

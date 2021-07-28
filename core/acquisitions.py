@@ -140,8 +140,8 @@ class DRBOWorstCaseSens(Acquisition):
                 K_inv = cholesky_inverse(kernel(context_points))
                 f_T_K_inv = ucb_vals[None, :] @ K_inv  # (1, num_context_points)
                 worst_case_sensitivity = np.sqrt(f_T_K_inv @ ucb_vals[:, None] -
-                                                 (np.squeeze(f_T_K_inv @ np.ones((num_context_points, 1))) ** 2) /
-                                                 np.sum(K_inv))
+                                                 ((np.squeeze(f_T_K_inv @ np.ones((num_context_points, 1))) ** 2) /
+                                                 np.sum(K_inv)))
                 sens_factor = epsilon
             elif divergence == 'TV':
                 worst_case_sensitivity = 0.5 * (np.max(ucb_vals) - np.min(ucb_vals))

@@ -33,7 +33,7 @@ def rand_func():
     obs_variance = 0.001
     is_optimizing_gp = False
     opt_max_iter = 10
-    num_bo_iters = 10
+    num_bo_iters = 200
     num_init_points = 10
     beta_const = 0
     ref_mean = 0.5
