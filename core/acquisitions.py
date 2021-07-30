@@ -6,7 +6,8 @@ from gpflow.kernels import Kernel
 from trieste.type import TensorType
 
 from core.models import ModelOptModule
-from core.utils import get_upper_lower_bounds, get_robust_expectation_and_action, cholesky_inverse
+from core.utils import get_upper_lower_bounds, get_robust_expectation_and_action, cholesky_inverse, worst_case_sens, \
+    get_cubic_approx_func
 
 
 def GP_UCB_point(model: ModelOptModule,
@@ -34,6 +35,8 @@ def get_acquisition(acq_name,
         return DRBOGeneral(**args)
     elif acq_name == 'DRBOWorstCaseSens':
         return DRBOWorstCaseSens(**args)
+    elif acq_name == 'DRBOCubicApprox':
+        return DRBOCubicApprox(**args)
     else:
         raise Exception('Acquisition name is wrong')
 
@@ -136,24 +139,72 @@ class DRBOWorstCaseSens(Acquisition):
                                              axis=-1)  # (num_context_points, d_x + d_c)
             ucb_vals, _ = get_upper_lower_bounds(model, action_contexts, self.beta(t))  # (num_context_points, )
             expected_ucb = np.sum(ref_dist * ucb_vals)  # SAA
+
+            worst_case_sensitivity = worst_case_sens(fvals=ucb_vals,
+                                                     context_points=context_points,
+                                                     kernel=kernel,
+                                                     divergence=divergence)
+
             if divergence == 'MMD':
-                K_inv = cholesky_inverse(kernel(context_points))
-                f_T_K_inv = ucb_vals[None, :] @ K_inv  # (1, num_context_points)
-                worst_case_sensitivity = np.sqrt(f_T_K_inv @ ucb_vals[:, None] -
-                                                 ((np.squeeze(f_T_K_inv @ np.ones((num_context_points, 1))) ** 2) /
-                                                 np.sum(K_inv)))
-                sens_factor = epsilon
-            elif divergence == 'TV':
-                worst_case_sensitivity = 0.5 * (np.max(ucb_vals) - np.min(ucb_vals))
                 sens_factor = epsilon  # might be square root epsilon for others
+            elif divergence == 'TV':
+                sens_factor = epsilon
             elif divergence == 'modified_chi_squared':
-                worst_case_sensitivity = np.sqrt(2 * np.var(ucb_vals))
                 sens_factor = np.sqrt(epsilon)
             else:
                 raise Exception("Invalid divergence passed to DRBOWorstCaseSens")
+
             adv_lower_bound = expected_ucb - (sens_factor * worst_case_sensitivity)
             adv_lower_bounds.append(adv_lower_bound)
         max_idx = np.argmax(adv_lower_bounds)
+        return action_points[max_idx:max_idx + 1]
+
+
+class DRBOCubicApprox(Acquisition):
+    """
+    Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
+    approximation for large epsilon.
+    """
+    def __init__(self,
+                 beta: Callable,
+                 divergence: str,  # "TV", "modified_chi_squared"
+                 **kwargs):
+        super().__init__()
+        self.beta = beta
+        self.divergence = divergence
+
+    def acquire(self,
+                model: ModelOptModule,
+                action_points: TensorType,
+                context_points: TensorType,
+                t: int,
+                ref_dist: TensorType,
+                divergence: str,
+                kernel: Kernel,
+                epsilon: float):
+        num_action_points = len(action_points)
+        num_context_points = len(context_points)
+        adv_approxs = []
+        for i in range(num_action_points):
+            tiled_action = np.tile(action_points[i:i + 1], (num_context_points, 1))  # (num_context_points, d_x)
+            action_contexts = np.concatenate([tiled_action, context_points],
+                                             axis=-1)  # (num_context_points, d_x + d_c)
+            ucb_vals, _ = get_upper_lower_bounds(model, action_contexts, self.beta(t))  # (num_context_points, )
+
+            worst_case_sensitivity = worst_case_sens(fvals=ucb_vals,
+                                                     context_points=context_points,
+                                                     kernel=kernel,
+                                                     divergence=divergence)
+
+            V_approx_func = get_cubic_approx_func(context_points=context_points,
+                                                  fvals=ucb_vals,
+                                                  kernel=kernel,
+                                                  ref_dist=ref_dist,
+                                                  worst_case_sensitivity=worst_case_sensitivity,
+                                                  divergence=divergence)
+
+            adv_approxs.append(V_approx_func(epsilon))
+        max_idx = np.argmax(adv_approxs)
         return action_points[max_idx:max_idx + 1]
 
 

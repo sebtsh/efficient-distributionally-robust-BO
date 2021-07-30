@@ -261,3 +261,80 @@ def modified_chi_squared(w1: TensorType,
     """
     phi = lambda x: 0.5 * ((x - 1) ** 2)
     return w2 @ phi(w1 / w2)
+
+
+def worst_case_sens(fvals,
+                    context_points,
+                    kernel,
+                    divergence):
+    if divergence == 'MMD':
+        num_context_points = len(context_points)
+        K_inv = cholesky_inverse(kernel(context_points))
+        f_T_K_inv = fvals[None, :] @ K_inv  # (1, num_context_points)
+        worst_case_sensitivity = np.sqrt(f_T_K_inv @ fvals[:, None] -
+                                         ((np.squeeze(f_T_K_inv @ np.ones((num_context_points, 1))) ** 2) /
+                                          np.sum(K_inv)))
+    elif divergence == 'TV':
+        worst_case_sensitivity = 0.5 * (np.max(fvals) - np.min(fvals))
+    elif divergence == 'modified_chi_squared':
+        worst_case_sensitivity = np.sqrt(2 * np.var(fvals))
+    else:
+        raise Exception("Invalid divergence passed to worst_case_sens")
+    return worst_case_sensitivity
+
+
+def get_cubic_approx_func(context_points,
+                          fvals,
+                          kernel,
+                          ref_dist,
+                          worst_case_sensitivity,
+                          divergence):
+    """
+    Approximates the adversarial expectation V over epsilon using a cubic function and information about V and V's
+    gradient at the start and end points, which can be cheaply computed.
+    :param action: array of shape (1, d_x)
+    :param context_points:
+    :param obj_func:
+    :param kernel:
+    :param ref_dist:
+    :param worst_case_sensitivity:
+    :param divergence:
+    :return:
+    """
+
+    worst_dist = np.zeros(len(context_points))
+    worst_dist[np.argmin(fvals)] = 1
+    if divergence == 'MMD':
+        eps_max = np.squeeze(MMD(worst_dist, ref_dist, kernel, context_points))
+    elif divergence == 'TV':
+        eps_max = np.squeeze(TV(worst_dist, ref_dist))
+    elif divergence == 'modified_chi_squared':
+        eps_max = np.sqrt(np.squeeze(modified_chi_squared(worst_dist, ref_dist)))  # Take the square root
+    else:
+        raise Exception("Invalid divergence passed to get_cubic_approx_func")
+    f_eps_max = np.min(fvals)
+    f_prime_0 = -np.squeeze(worst_case_sensitivity)
+    f_0 = ref_dist @ fvals
+    A = np.array([[eps_max ** 3, eps_max ** 2],
+                  [3 * (eps_max ** 2), 2 * eps_max]])
+    b = np.array([f_eps_max - f_prime_0 * eps_max - f_0, - f_prime_0])
+    x = np.linalg.solve(A, b)
+
+    if divergence == 'MMD' or divergence == 'TV':
+        def f(eps):
+            if eps < eps_max:
+                return x[0] * (eps ** 3) + x[1] * (eps ** 2) + f_prime_0 * eps + f_0
+            else:
+                return f_eps_max
+
+        return np.vectorize(f)
+    elif divergence == 'modified_chi_squared':
+        # Account for the fact that what we have is actually a function on square root epsilon
+        def f(eps):
+            sqrt_eps = np.sqrt(eps)
+            if sqrt_eps < eps_max:  # eps_max here is actually square root eps_max
+                return x[0] * (sqrt_eps ** 3) + x[1] * (sqrt_eps ** 2) + f_prime_0 * sqrt_eps + f_0
+            else:
+                return f_eps_max
+
+        return np.vectorize(f)
