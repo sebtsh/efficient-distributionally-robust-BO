@@ -44,7 +44,7 @@ def rand_func():
 def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_points,
          dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_const,
          ref_mean, ref_var, true_mean, true_var, seed, show_plots, figsize=(15, 6), dpi=None):
-    context_grid_densities = np.arange(10, 110, 10)
+    context_grid_densities = np.arange(200, 2200, 200)
     divergences = ['MMD', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens']
     color_dict = {'GP-UCB': '#d7263d',
@@ -116,10 +116,11 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
         # Plots
         fig = plt.figure(figsize=figsize, dpi=dpi)
         for acquisition in acquisitions:
-            plt.plot(context_grid_densities, timing_dict[acquisition], color=color_dict[acquisition])
+            plt.plot(context_grid_densities, timing_dict[acquisition], label=acquisition, color=color_dict[acquisition])
         plt.title("{} average acquisition time in seconds".format(divergence))
         plt.xlabel("Size of context set")
         plt.ylabel("Seconds")
+        plt.legend()
 
     pickle.dump(timing_dict, open("runs/timing_dict.p", "wb"))
 
