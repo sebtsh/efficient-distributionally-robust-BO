@@ -36,12 +36,12 @@ def rand_func():
     num_bo_iters = 200
     num_init_points = 10
     beta_const = 0
-    ref_mean = 0.05
+    ref_mean = 0.5
     ref_var = 0.05
     true_mean = 0.2
     true_var = 0.05
     seed = 0
-    show_plots = True
+    show_plots = False
 
 
 @ex.automain
@@ -108,21 +108,21 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
     query_points = final_dataset.query_points.numpy()
     maximizer = search_points[[np.argmax(obj_func(search_points))]]
     title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}".format(beta_const)
+    file_name = "{}-{}-{}-seed{}-beta{}-refmean{}".format(obj_func_name,
+                                                          divergence,
+                                                          acq_name,
+                                                          seed,
+                                                          beta_const,
+                                                          ref_mean)
     if dims == 2:
         Path("runs/plots").mkdir(parents=True, exist_ok=True)
         fig, ax = plot_function_2d(obj_func, lowers, uppers, grid_density_per_dim, contour=True,
                                    title=title, colorbar=True)
         plot_bo_points_2d(query_points, ax, num_init=num_init_points, maximizer=maximizer)
-        fig.savefig("runs/plots/{}-{}-{}-{}-obj_func.png".format(obj_func_name,
-                                                                 divergence,
-                                                                 acq_name,
-                                                                 seed))
+        fig.savefig("runs/plots/" + file_name + "-obj_func.png")
 
         fig, ax = plot_gp_2d(model.gp, mins=lowers, maxs=uppers, grid_density=grid_density_per_dim,
-                             save_location="runs/plots/{}-{}-{}-{}-gp.png".format(obj_func_name,
-                                                                                  divergence,
-                                                                                  acq_name,
-                                                                                  seed))
+                             save_location="runs/plots/" + file_name + "-gp.png")
 
     fig, ax, regrets, cumulative_regrets = plot_robust_regret(obj_func=obj_func,
                                                               query_points=query_points,
@@ -133,16 +133,10 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
                                                               margin_func=margin_func,
                                                               divergence=divergence,
                                                               title=title)
-    fig.savefig("runs/plots/{}-{}-{}-{}-regret.png".format(obj_func_name,
-                                                           divergence,
-                                                           acq_name,
-                                                           seed))
+    fig.savefig("runs/plots/" + file_name + "-regret.png")
 
     pickle.dump((regrets, cumulative_regrets, average_acq_time, query_points),
-                open("runs/{}-{}-{}-seed{}.p".format(obj_func_name,
-                                                     divergence,
-                                                     acq_name,
-                                                     seed), "wb"))
+                open("runs/" + file_name + ".p", "wb"))
 
     if show_plots:
         plt.show()
