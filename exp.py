@@ -36,12 +36,12 @@ def rand_func():
     num_bo_iters = 200
     num_init_points = 10
     beta_const = 0
-    ref_mean = 0.5
+    ref_mean = 0.05
     ref_var = 0.05
     true_mean = 0.2
     true_var = 0.05
     seed = 0
-    show_plots = False
+    show_plots = True
 
 
 @ex.automain
