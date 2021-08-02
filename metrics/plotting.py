@@ -468,7 +468,9 @@ def plot_robust_regret(obj_func,
                        ref_dist_func,
                        margin_func,
                        divergence,
+                       robust_expectation_action=None,
                        title="",
+                       verbose=False,
                        figsize=None,
                        dpi=None):
     fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
@@ -484,24 +486,28 @@ def plot_robust_regret(obj_func,
         f = obj_func(domain)
         query_expectation, w = adversarial_expectation(f=f, M=M, w_t=ref_dist_func(t), epsilon=margin_func(t),
                                                        divergence=divergence)
-        robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
-                                                                              context_points=context_points,
-                                                                              kernel=kernel,
-                                                                              fvals_source='obj_func',
-                                                                              ref_dist=ref_dist_func(t),
-                                                                              divergence=divergence,
-                                                                              epsilon=margin_func(t),
-                                                                              obj_func=obj_func)
-        print("t = {}".format(t))
-        print("query_point = {}".format(query_points[t:t + 1, 0:1]))
-        print("robust_action = {}".format(robust_action))
-        print("robust_expectation = {}".format(robust_expectation))
-        print("query_expectation = {}".format(query_expectation))
-        #adv_mean = w @ context_points
-        #adv_var = w @ ((context_points - adv_mean) ** 2)
-        #print("adversarially chosen distribution has mean = {} and variance = {}".format(adv_mean, adv_var))
-        print("adversarially chosen distribution: {}".format(w))
-        print("===========")
+        if robust_expectation_action is None:
+            robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
+                                                                                  context_points=context_points,
+                                                                                  kernel=kernel,
+                                                                                  fvals_source='obj_func',
+                                                                                  ref_dist=ref_dist_func(t),
+                                                                                  divergence=divergence,
+                                                                                  epsilon=margin_func(t),
+                                                                                  obj_func=obj_func)
+        else:
+            robust_expectation, robust_action = robust_expectation_action  # Warning: assumes constant functions
+        if verbose:
+            print("t = {}".format(t))
+            print("query_point = {}".format(query_points[t:t + 1, 0:1]))
+            print("robust_action = {}".format(robust_action))
+            print("robust_expectation = {}".format(robust_expectation))
+            print("query_expectation = {}".format(query_expectation))
+            print("adversarially chosen distribution: {}".format(w))
+            adv_mean = w @ context_points
+            adv_var = w @ ((context_points - adv_mean) ** 2)
+            print("adversarially chosen distribution has mean = {} and variance = {}".format(adv_mean, adv_var))
+            print("===========")
         regrets.append(robust_expectation - query_expectation)
         cumulative_regrets.append(np.sum(regrets))
     ax.plot(np.arange(0, len(regrets)), cumulative_regrets, marker='x')
@@ -618,13 +624,13 @@ def plot_gp_2d(
                     title = "variance"
                 axx = ax[k, 0]
                 plt_obj = plot_surface(xx, yy, fvals, ax[k, 0], contour=contour, alpha=1.0)
-                #plot_surface(xx, yy, fvar, ax[k, 1], contour=contour, alpha=1.0)
+                # plot_surface(xx, yy, fvar, ax[k, 1], contour=contour, alpha=1.0)
                 ax[k, 0].set_title(title)
-                #ax[k, 1].set_title("variance")
+                # ax[k, 1].set_title("variance")
                 ax[k, 0].set_xlabel(xlabel)
                 ax[k, 0].set_ylabel(ylabel)
-                #ax[k, 1].set_xlabel(xlabel)
-                #ax[k, 1].set_ylabel(ylabel)
+                # ax[k, 1].set_xlabel(xlabel)
+                # ax[k, 1].set_ylabel(ylabel)
                 fig.colorbar(plt_obj, ax=axx)
             else:
                 ax = axx = fig.add_subplot(1, n_output, k + 1, projection="3d")

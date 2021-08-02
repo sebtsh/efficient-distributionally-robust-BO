@@ -12,7 +12,7 @@ from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist_1d, get_discrete_uniform_dist_1d, \
-    get_margin
+    get_margin, get_robust_expectation_and_action
 from metrics.plotting import plot_function_2d, plot_bo_points_2d, plot_robust_regret, plot_gp_2d
 
 ex = Experiment("DRBO")
@@ -45,9 +45,44 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
          dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points,
          ref_var, true_mean, true_var, seed, show_plots):
     for divergence in ['MMD', 'TV', 'modified_chi_squared']:
-        for acq_name in ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox']:
-            for beta_const in [0, 0.5, 1, 2]:
-                for ref_mean in [0, 0.25, 0.5]:
+        for ref_mean in [0, 0.25, 0.5]:
+            # Calculate ground truth (robust exp) once to speed things up. Assumes constant dist and epsilon functions
+
+            # Action space (1d for now)
+            action_points = construct_grid_1d(lowers[0], uppers[0], grid_density_per_dim)
+            # Context space (1d for now)
+            context_points = construct_grid_1d(lowers[1], uppers[1], grid_density_per_dim)
+            search_points = cross_product(action_points, context_points)
+
+            # We can do this because not optimizing kernel
+            f_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls] * dims)
+            if divergence == 'MMD':
+                mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls])  # 1d for now
+            else:
+                mmd_kernel = None
+
+            # Get objective function
+            obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, rand_func_num_points, seed)
+
+            # Distribution generating functions
+            ref_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)
+            # true_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, true_mean, true_var)
+            true_dist_func = lambda x: get_discrete_uniform_dist_1d(context_points)
+            margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
+            margin_func = lambda x: margin  # Constant margin for now
+
+            print("Calculating robust expectation")
+            robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
+                                                                                  context_points=context_points,
+                                                                                  kernel=mmd_kernel,
+                                                                                  fvals_source='obj_func',
+                                                                                  ref_dist=ref_dist_func(0),
+                                                                                  divergence=divergence,
+                                                                                  epsilon=margin_func(0),
+                                                                                  obj_func=obj_func)
+
+            for acq_name in ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox']:
+                for beta_const in [0, 0.5, 1, 2]:
                     file_name = "{}-{}-{}-seed{}-beta{}-refmean{}".format(obj_func_name,
                                                                           divergence,
                                                                           acq_name,
@@ -56,22 +91,8 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                                                           ref_mean)
                     print("==========================")
                     print("Running experiment " + file_name)
+                    print("Using margin = {}".format(margin))
                     np.random.seed(seed)
-
-                    f_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls] * dims)
-                    if divergence == 'MMD':
-                        mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls])  # 1d for now
-                    else:
-                        mmd_kernel = None
-
-                    # Get objective function
-                    obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, rand_func_num_points, seed)
-
-                    # Action space (1d for now)
-                    action_points = construct_grid_1d(lowers[0], uppers[0], grid_density_per_dim)
-                    # Context space (1d for now)
-                    context_points = construct_grid_1d(lowers[1], uppers[1], grid_density_per_dim)
-                    search_points = cross_product(action_points, context_points)
 
                     observer = mk_noisy_observer(obj_func, obs_variance)
                     init_dataset = observer(search_points[np.random.randint(0, len(search_points), num_init_points)])
@@ -87,14 +108,6 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                     acquisition = get_acquisition(acq_name=acq_name,
                                                   beta=lambda x: beta_const,
                                                   divergence=divergence)  # TODO: Implement beta function
-
-                    # Distribution generating functions
-                    ref_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)
-                    # true_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, true_mean, true_var)
-                    true_dist_func = lambda x: get_discrete_uniform_dist_1d(context_points)
-                    margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
-                    margin_func = lambda x: margin  # Constant margin for now
-                    print("Using margin = {}".format(margin))
 
                     # Main BO loop
                     final_dataset, model_params, average_acq_time = bayes_opt_loop_dist_robust(model=model,
@@ -135,6 +148,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                                                               ref_dist_func=ref_dist_func,
                                                                               margin_func=margin_func,
                                                                               divergence=divergence,
+                                                                              robust_expectation_action=(robust_expectation, robust_action),
                                                                               title=title)
                     fig.savefig("runs/plots/" + file_name + "-regret.png")
 
