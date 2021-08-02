@@ -16,7 +16,7 @@ Path("plots").mkdir(parents=True, exist_ok=True)
 
 acq_name = 'GP-UCB'
 obj_func_name = 'rand_func'
-divergence = 'TV'  # 'MMD', 'TV' or 'modified_chi_squared'' or 'modified_chi_squared'
+divergence = 'MMD'  # 'MMD', 'TV' or 'modified_chi_squared'
 dims = 2
 lowers = [0] * dims
 uppers = [1] * dims
@@ -80,7 +80,7 @@ num_action_points = len(action_points)
 ###################################################################
 
 # Compare DRBO and worst-case sensitivity choices
-epsilons = np.linspace(0, 3, 200)  # MMD: 1.2,  # chisquared: 10, TV: 3
+epsilons = np.linspace(0, 1.2, 200)  # MMD: 1.2,  # chisquared: 10, TV: 3
 
 for seed in range(10):
     obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, rand_func_num_points, seed)
@@ -169,7 +169,7 @@ for seed in range(10):
     plt.title(title)
     plt.xlabel("$\epsilon$")
     plt.ylabel("Adv. expectation of selected action")
-    plt.savefig("plots/" + title + ".png")
+    #plt.savefig("plots/" + title + ".png")
 
 plt.show()
 

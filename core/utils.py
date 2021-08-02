@@ -315,15 +315,23 @@ def get_cubic_approx_func(context_points,
     f_eps_max = np.min(fvals)
     f_prime_0 = -np.squeeze(worst_case_sensitivity)
     f_0 = ref_dist @ fvals
-    A = np.array([[eps_max ** 3, eps_max ** 2],
+    M = np.array([[eps_max ** 3, eps_max ** 2],
                   [3 * (eps_max ** 2), 2 * eps_max]])
-    b = np.array([f_eps_max - f_prime_0 * eps_max - f_0, - f_prime_0])
-    x = np.linalg.solve(A, b)
+    c = np.array([f_eps_max - f_prime_0 * eps_max - f_0, - f_prime_0])
+    x = np.linalg.solve(M, c)
+
+    # Test closed form solutions
+    alpha = f_eps_max - f_prime_0 * eps_max - f_0
+    beta = -f_prime_0
+    A = (eps_max * beta - 2 * alpha) / (eps_max ** 3)
+    B = (3 * alpha - eps_max * beta) / (eps_max ** 2)
+    assert(np.allclose(A, x[0]))
+    assert(np.allclose(B, x[1]))
 
     if divergence == 'MMD' or divergence == 'TV':
         def f(eps):
             if eps < eps_max:
-                return x[0] * (eps ** 3) + x[1] * (eps ** 2) + f_prime_0 * eps + f_0
+                return A * (eps ** 3) + B * (eps ** 2) + f_prime_0 * eps + f_0
             else:
                 return f_eps_max
 
