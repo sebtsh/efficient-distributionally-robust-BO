@@ -1,4 +1,8 @@
 import gpflow as gpf
+
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
@@ -137,9 +141,11 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                                    title=title, colorbar=True)
                         plot_bo_points_2d(query_points, ax, num_init=num_init_points, maximizer=maximizer)
                         fig.savefig("runs/plots/" + file_name + "-obj_func.png")
+                        plt.close(fig)
 
                         fig, ax = plot_gp_2d(model.gp, mins=lowers, maxs=uppers, grid_density=grid_density_per_dim,
                                              save_location="runs/plots/" + file_name + "-gp.png")
+                        plt.close(fig)
 
                     fig, ax, regrets, cumulative_regrets = plot_robust_regret(obj_func=obj_func,
                                                                               query_points=query_points,
@@ -152,6 +158,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                                                               robust_expectation_action=(robust_expectation, robust_action),
                                                                               title=title)
                     fig.savefig("runs/plots/" + file_name + "-regret.png")
+                    plt.close(fig)
 
                     pickle.dump((regrets, cumulative_regrets, average_acq_time, query_points),
                                 open("runs/" + file_name + ".p", "wb"))
