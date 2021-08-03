@@ -331,7 +331,15 @@ def get_cubic_approx_func(context_points,
     if divergence == 'MMD' or divergence == 'TV':
         def f(eps):
             if eps < eps_max:
-                return A * (eps ** 3) + B * (eps ** 2) + f_prime_0 * eps + f_0
+                fval = A * (eps ** 3) + B * (eps ** 2) + f_prime_0 * eps + f_0
+                # Handle cases when cubic approximation does not work well
+                linear_approx = f_prime_0 * eps + f_0
+                if fval < f_eps_max:
+                    return f_eps_max
+                elif fval < linear_approx:
+                    return linear_approx
+                else:
+                    return fval
             else:
                 return f_eps_max
 
@@ -341,7 +349,14 @@ def get_cubic_approx_func(context_points,
         def f(eps):
             sqrt_eps = np.sqrt(eps)
             if sqrt_eps < eps_max:  # eps_max here is actually square root eps_max
-                return x[0] * (sqrt_eps ** 3) + x[1] * (sqrt_eps ** 2) + f_prime_0 * sqrt_eps + f_0
+                fval = x[0] * (sqrt_eps ** 3) + x[1] * (sqrt_eps ** 2) + f_prime_0 * sqrt_eps + f_0
+                linear_approx = f_prime_0 * sqrt_eps + f_0
+                if fval < f_eps_max:
+                    return f_eps_max
+                elif fval < linear_approx:
+                    return linear_approx
+                else:
+                    return fval
             else:
                 return f_eps_max
 
