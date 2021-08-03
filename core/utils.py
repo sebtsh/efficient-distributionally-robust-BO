@@ -176,17 +176,20 @@ def get_robust_expectation_and_action(action_points: TensorType,
     :return: tuple (float, array of shape (1, d_x)). Value of robust action, and robust action
     """
     num_actions = len(action_points)
+    num_context_points = len(context_points)
     expectations = []
+    domain = cross_product(action_points, context_points)
+
     for i in range(num_actions):
-        domain = cross_product(action_points[i:i + 1], context_points)
+        action_contexts = get_action_contexts(i, domain, num_context_points)
         if divergence == 'MMD':
-            M = kernel(domain)
+            M = kernel(action_contexts)
         else:
             M = None
         if fvals_source == 'obj_func':
-            f = np.squeeze(obj_func(domain), axis=-1)
+            f = np.squeeze(obj_func(action_contexts), axis=-1)
         elif fvals_source == 'ucb':
-            f, _ = get_upper_lower_bounds(model, domain, beta)
+            f, _ = get_upper_lower_bounds(model, action_contexts, beta)
         else:
             raise Exception("Invalid fvals_source given")
         expectation, _ = adversarial_expectation(f=f,

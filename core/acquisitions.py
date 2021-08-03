@@ -64,7 +64,7 @@ class Acquisition(ABC):
                 ref_dist: TensorType,
                 divergence: str,
                 kernel: Kernel,
-                epsilon: float) -> TensorType:
+                epsilon: float):
         """
         Takes in models and a search space and returns an array of shape (b, d) that represents a batch selection
         of next points to query.
@@ -139,10 +139,10 @@ class DRBOWorstCaseSens(Acquisition):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         adv_lower_bounds = []
+        domain = cross_product(action_points, context_points)
+
         for i in range(num_action_points):
-            tiled_action = np.tile(action_points[i:i + 1], (num_context_points, 1))  # (num_context_points, d_x)
-            action_contexts = np.concatenate([tiled_action, context_points],
-                                             axis=-1)  # (num_context_points, d_x + d_c)
+            action_contexts = get_action_contexts(i, domain, num_context_points)
             ucb_vals, _ = get_upper_lower_bounds(model, action_contexts, self.beta(t))  # (num_context_points, )
             expected_ucb = np.sum(ref_dist * ucb_vals)  # SAA
 
@@ -346,9 +346,10 @@ class GPUCBStochastic(Acquisition):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         max_val = -np.infty
+        domain = cross_product(action_points, context_points)
+
         for i in range(num_action_points):
-            tiled_action = np.tile(action_points[i:i + 1], (num_context_points, 1))  # (num_context_points, d_x)
-            action_contexts = np.concatenate([tiled_action, context_points], axis=-1)  # (num_context_points, d_x + d_c)
+            action_contexts = get_action_contexts(i, domain, num_context_points)
             upper_bounds, _ = get_upper_lower_bounds(model, action_contexts, self.beta(t))  # (num_context_points, )
             expected_upper = np.sum(ref_dist * upper_bounds)
             if expected_upper > max_val:
