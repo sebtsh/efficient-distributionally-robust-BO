@@ -81,7 +81,8 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                                                                   epsilon=margin_func(0),
                                                                                   obj_func=obj_func)
 
-            for acq_name in ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox']:
+            #for acq_name in ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox']:
+            for acq_name in ['WorstCaseSensTS', 'CubicApproxTS']:
                 for beta_const in [0, 0.5, 1, 2]:
                     file_name = "{}-{}-{}-seed{}-beta{}-refmean{}".format(obj_func_name,
                                                                           divergence,

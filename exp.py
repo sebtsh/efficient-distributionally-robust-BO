@@ -12,7 +12,7 @@ from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist_1d, get_discrete_uniform_dist_1d, \
-    get_margin
+    get_margin, get_robust_expectation_and_action
 from metrics.plotting import plot_function_2d, plot_bo_points_2d, plot_robust_regret, plot_gp_2d
 
 ex = Experiment("DRBO")
@@ -36,11 +36,11 @@ def rand_func():
     num_bo_iters = 200
     num_init_points = 10
     beta_const = 0
-    ref_mean = 0.5
+    ref_mean = 0
     ref_var = 0.05
     true_mean = 0.2
     true_var = 0.05
-    seed = 0
+    seed = 3
     show_plots = False
 
 
@@ -78,7 +78,7 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
     # Acquisition
     acquisition = get_acquisition(acq_name=acq_name,
                                   beta=lambda x: beta_const,
-                                  divergence=divergence)  # TODO: Implement beta function
+                                  divergence=divergence)
 
     # Distribution generating functions
     ref_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)
@@ -124,6 +124,16 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
         fig, ax = plot_gp_2d(model.gp, mins=lowers, maxs=uppers, grid_density=grid_density_per_dim,
                              save_location="runs/plots/" + file_name + "-gp.png")
 
+    print("Calculating robust expectation")
+    robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
+                                                                          context_points=context_points,
+                                                                          kernel=mmd_kernel,
+                                                                          fvals_source='obj_func',
+                                                                          ref_dist=ref_dist_func(0),
+                                                                          divergence=divergence,
+                                                                          epsilon=margin_func(0),
+                                                                          obj_func=obj_func)
+
     fig, ax, regrets, cumulative_regrets = plot_robust_regret(obj_func=obj_func,
                                                               query_points=query_points,
                                                               action_points=action_points,
@@ -132,6 +142,7 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
                                                               ref_dist_func=ref_dist_func,
                                                               margin_func=margin_func,
                                                               divergence=divergence,
+                                                              robust_expectation_action=(robust_expectation, robust_action),
                                                               title=title)
     fig.savefig("runs/plots/" + file_name + "-regret.png")
 

@@ -64,12 +64,13 @@ class ModelOptModule(ABC):
         pass
 
     @abstractmethod
-    def predict_f(self, data: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict_f(self, data: TensorType, full_cov=False) -> Tuple[TensorType, TensorType]:
         """
         Returns the posterior mean and variance over the domain for the main function f. For single output GPs, this
         should be the same function as in the GPflow models. For heteroscedastic GPs or other multi-output GPs,
         be careful to only output the main f values here, and use other functions for the other outputs.
         :param data: Array of shape (m, d)
+        :param full_cov: Return full covariance matrix if True, individual variances otherwise
         :return: tuple with 2 arrays of shape (m, 1)
         """
         pass
@@ -128,8 +129,8 @@ class GPRModule(ModelOptModule):
                                 self.gp.trainable_variables,
                                 options=dict(maxiter=self.opt_max_iter))
 
-    def predict_f(self, data: TensorType) -> Tuple[TensorType, TensorType]:
-        return self.gp.predict_f(data)
+    def predict_f(self, data: TensorType, full_cov: bool = False) -> Tuple[TensorType, TensorType]:
+        return self.gp.predict_f(data, full_cov=full_cov)
 
     def predict_y(self, data: TensorType) -> Tuple[TensorType, TensorType]:
         return self.gp.predict_y(data)

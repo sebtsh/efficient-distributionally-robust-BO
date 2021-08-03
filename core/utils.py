@@ -361,3 +361,13 @@ def get_cubic_approx_func(context_points,
                 return f_eps_max
 
         return np.vectorize(f)
+
+
+def get_action_contexts(action, domain, num_context_points):
+    """
+
+    :param action: int in range [m-1], where m is num_actions
+    :param domain: cross product of actions and contexts. array of shape (m * n, d_x + d_y).
+    :return: array of shape (n, d_x + d_y)
+    """
+    return domain[action * num_context_points:(action+1) * num_context_points, :]

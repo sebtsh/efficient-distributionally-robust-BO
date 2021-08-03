@@ -2,12 +2,13 @@ from abc import ABC, abstractmethod
 from typing import Callable
 
 import numpy as np
+from numpy.random import default_rng
 from gpflow.kernels import Kernel
 from trieste.type import TensorType
 
 from core.models import ModelOptModule
 from core.utils import get_upper_lower_bounds, get_robust_expectation_and_action, cholesky_inverse, worst_case_sens, \
-    get_cubic_approx_func
+    get_cubic_approx_func, cross_product, get_action_contexts
 
 
 def GP_UCB_point(model: ModelOptModule,
@@ -26,6 +27,7 @@ def get_acquisition(acq_name,
     :param acq_name:
     :param beta: Function of timestep
     :param divergence:
+    :param mode:
     :return:
     """
     args = dict(sorted(locals().items()))
@@ -37,6 +39,10 @@ def get_acquisition(acq_name,
         return DRBOWorstCaseSens(**args)
     elif acq_name == 'DRBOCubicApprox':
         return DRBOCubicApprox(**args)
+    elif acq_name == 'WorstCaseSensTS':
+        return WorstCaseSensTS(**args)
+    elif acq_name == 'CubicApproxTS':
+        return CubicApproxTS(**args)
     else:
         raise Exception('Acquisition name is wrong')
 
@@ -160,11 +166,12 @@ class DRBOWorstCaseSens(Acquisition):
         return action_points[max_idx:max_idx + 1]
 
 
-class DRBOCubicApprox(Acquisition):
+class WorstCaseSensTS(Acquisition):
     """
-    Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
-    approximation for large epsilon.
+    Uses worst case sensitivity (Gotoh et. al., 2020) as a fast upper bound for the distributionally robust
+    maximin problem.
     """
+
     def __init__(self,
                  beta: Callable,
                  divergence: str,  # "TV", "modified_chi_squared"
@@ -184,20 +191,127 @@ class DRBOCubicApprox(Acquisition):
                 epsilon: float):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
-        adv_approxs = []
-        for i in range(num_action_points):
-            tiled_action = np.tile(action_points[i:i + 1], (num_context_points, 1))  # (num_context_points, d_x)
-            action_contexts = np.concatenate([tiled_action, context_points],
-                                             axis=-1)  # (num_context_points, d_x + d_c)
-            ucb_vals, _ = get_upper_lower_bounds(model, action_contexts, self.beta(t))  # (num_context_points, )
+        adv_lower_bounds = []
+        domain = cross_product(action_points, context_points)
 
-            worst_case_sensitivity = worst_case_sens(fvals=ucb_vals,
+        fmean, fvar = model.predict_f(domain, full_cov=True)
+        rng = default_rng()
+        all_fvals = rng.multivariate_normal(np.squeeze(fmean), np.squeeze(fvar))  # (num_action_points * num_context_points)
+        for i in range(num_action_points):
+            fvals = all_fvals[i * num_context_points:(i+1) * num_context_points]
+            expected_fvals = np.sum(ref_dist * fvals)  # SAA
+
+            worst_case_sensitivity = worst_case_sens(fvals=fvals,
+                                                     context_points=context_points,
+                                                     kernel=kernel,
+                                                     divergence=divergence)
+
+            if divergence == 'MMD':
+                sens_factor = epsilon  # might be square root epsilon for others
+            elif divergence == 'TV':
+                sens_factor = epsilon
+            elif divergence == 'modified_chi_squared':
+                sens_factor = np.sqrt(epsilon)
+            else:
+                raise Exception("Invalid divergence passed to WorstCaseSensTS")
+
+            adv_lower_bound = expected_fvals - (sens_factor * worst_case_sensitivity)
+            adv_lower_bounds.append(adv_lower_bound)
+        max_idx = np.argmax(adv_lower_bounds)
+        return action_points[max_idx:max_idx + 1]
+
+
+class DRBOCubicApprox(Acquisition):
+    """
+    Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
+    approximation for large epsilon.
+    """
+    def __init__(self,
+                 beta: Callable,
+                 divergence: str,
+                 mode: str, # 'UCB' or 'TS'
+                 **kwargs):
+        super().__init__()
+        self.beta = beta
+        self.divergence = divergence
+        self.mode = mode
+
+    def acquire(self,
+                model: ModelOptModule,
+                action_points: TensorType,
+                context_points: TensorType,
+                t: int,
+                ref_dist: TensorType,
+                divergence: str,
+                kernel: Kernel,
+                epsilon: float):
+        num_action_points = len(action_points)
+        num_context_points = len(context_points)
+        adv_approxs = []
+        domain = cross_product(action_points, context_points)
+
+        for i in range(num_action_points):
+            action_contexts = get_action_contexts(i, domain, num_context_points)
+            fvals, _ = get_upper_lower_bounds(model, action_contexts, self.beta(t))  # (num_context_points, )
+
+            worst_case_sensitivity = worst_case_sens(fvals=fvals,
                                                      context_points=context_points,
                                                      kernel=kernel,
                                                      divergence=divergence)
 
             V_approx_func = get_cubic_approx_func(context_points=context_points,
-                                                  fvals=ucb_vals,
+                                                  fvals=fvals,
+                                                  kernel=kernel,
+                                                  ref_dist=ref_dist,
+                                                  worst_case_sensitivity=worst_case_sensitivity,
+                                                  divergence=divergence)
+
+            adv_approxs.append(V_approx_func(epsilon))
+        max_idx = np.argmax(adv_approxs)
+        return action_points[max_idx:max_idx + 1]
+
+
+class CubicApproxTS(Acquisition):
+    """
+    Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
+    approximation for large epsilon.
+    """
+    def __init__(self,
+                 beta: Callable,
+                 divergence: str,
+                 **kwargs):
+        super().__init__()
+        self.beta = beta
+        self.divergence = divergence
+
+    def acquire(self,
+                model: ModelOptModule,
+                action_points: TensorType,
+                context_points: TensorType,
+                t: int,
+                ref_dist: TensorType,
+                divergence: str,
+                kernel: Kernel,
+                epsilon: float):
+        num_action_points = len(action_points)
+        num_context_points = len(context_points)
+        adv_approxs = []
+        domain = cross_product(action_points, context_points)
+
+        fmean, fvar = model.predict_f(domain, full_cov=True)
+        rng = default_rng()
+        all_fvals = rng.multivariate_normal(np.squeeze(fmean), np.squeeze(fvar))  # (num_action_points * num_context_points)
+
+        for i in range(num_action_points):
+            fvals = all_fvals[i * num_context_points:(i+1) * num_context_points]
+
+            worst_case_sensitivity = worst_case_sens(fvals=fvals,
+                                                     context_points=context_points,
+                                                     kernel=kernel,
+                                                     divergence=divergence)
+
+            V_approx_func = get_cubic_approx_func(context_points=context_points,
+                                                  fvals=fvals,
                                                   kernel=kernel,
                                                   ref_dist=ref_dist,
                                                   worst_case_sensitivity=worst_case_sensitivity,
