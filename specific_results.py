@@ -145,7 +145,10 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, fi
                 axs[0].legend()
 
                 # Cumulative regret
-                axs[1].plot(x, mean_cumu_regrets, label=acquisition, color=color)
+                if acquisition in ['WorstCaseSensTS', 'CubicApproxTS']:
+                    axs[1].plot(x, mean_cumu_regrets, label=acquisition, color=color)
+                else:
+                    axs[1].plot(x, mean_cumu_regrets, label=acquisition + "$\beta = {}$".format(beta), color=color)
                 axs[1].fill_between(x, mean_cumu_regrets-std_err_cumu_regrets, mean_cumu_regrets+std_err_cumu_regrets,
                                        alpha=0.2, color=color)
                 axs[1].legend()
