@@ -22,12 +22,14 @@ def default():
 def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, figsize=(15, 6), dpi=None):
     Path("runs/results").mkdir(parents=True, exist_ok=True)
     divergences = ['MMD', 'TV', 'modified_chi_squared']
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox', 'WorstCaseSensTS', 'CubicApproxTS']
     x = np.arange(num_bo_iters)
     color_dict = {'GP-UCB': '#d7263d',
                   'DRBOGeneral': '#fbb13c',
                   'DRBOWorstCaseSens': '#26c485',
-                  'DRBOCubicApprox': '#00a6ed'}
+                  'DRBOCubicApprox': '#00a6ed',
+                  'WorstCaseSensTS': '9f956c',
+                  'CubicApproxTS': '2f4858'}
     for ref_mean in [0, 0.25, 0.5]:
         for beta in [0, 0.5, 1, 2]:
             for divergence in divergences:
