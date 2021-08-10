@@ -28,9 +28,9 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, fi
                   'DRBOGeneral': '#fbb13c',
                   'DRBOWorstCaseSens': '#26c485',
                   'DRBOCubicApprox': '#00a6ed',
-                  'WorstCaseSensTS': '9f956c',
-                  'CubicApproxTS': '2f4858'}
-    for ref_mean in [0, 0.25, 0.5]:
+                  'WorstCaseSensTS': '#9f956c',
+                  'CubicApproxTS': '#2f4858'}
+    for ref_mean in [0, 0.25, 0.5]: 
         for beta in [0, 0.5, 1, 2]:
             for divergence in divergences:
                 fig, axs = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
