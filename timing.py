@@ -4,6 +4,7 @@ import numpy as np
 import pickle
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
+from pathlib import Path
 
 from core.acquisitions import get_acquisition
 from core.models import GPRModule
@@ -44,6 +45,7 @@ def rand_func():
 def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_points,
          dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_const,
          ref_mean, ref_var, true_mean, true_var, seed, show_plots, figsize=(15, 6), dpi=None):
+    Path("runs/plots").mkdir(parents=True, exist_ok=True)
     context_grid_densities = np.arange(200, 1800, 200)
     divergences = ['MMD', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox']
