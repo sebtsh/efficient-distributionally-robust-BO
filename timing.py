@@ -49,10 +49,10 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox', 'WorstCaseSensTS', 'CubicApproxTS']
     color_dict = {'GP-UCB': '#d7263d',
                   'DRBOGeneral': '#fbb13c',
-                  'DRBOWorstCaseSens': '#00a6ed',
-                  'DRBOCubicApprox': '26c485',
-                  'WorstCaseSensTS': '2f4858',
-                  'CubicApproxTS': '9f956c'}
+                  'DRBOWorstCaseSens': '#26c485',
+                  'DRBOCubicApprox': '#00a6ed',
+                  'WorstCaseSensTS': '#9f956c',
+                  'CubicApproxTS': '#2f4858'}
 
     for divergence in divergences:
         timing_dict = {}
