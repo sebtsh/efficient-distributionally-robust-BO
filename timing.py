@@ -46,7 +46,7 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
          ref_mean, ref_var, true_mean, true_var, seed, show_plots, figsize=(15, 6), dpi=None):
     context_grid_densities = np.arange(200, 1800, 200)
     divergences = ['MMD', 'TV', 'modified_chi_squared']
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox', 'WorstCaseSensTS', 'CubicApproxTS']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox']
     color_dict = {'GP-UCB': '#d7263d',
                   'DRBOGeneral': '#fbb13c',
                   'DRBOWorstCaseSens': '#26c485',
