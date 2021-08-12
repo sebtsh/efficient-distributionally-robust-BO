@@ -229,12 +229,10 @@ class DRBOCubicApprox(Acquisition):
     def __init__(self,
                  beta: Callable,
                  divergence: str,
-                 mode: str, # 'UCB' or 'TS'
                  **kwargs):
         super().__init__()
         self.beta = beta
         self.divergence = divergence
-        self.mode = mode
 
     def acquire(self,
                 model: ModelOptModule,
