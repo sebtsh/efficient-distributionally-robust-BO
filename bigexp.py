@@ -1,8 +1,6 @@
 import gpflow as gpf
 
 import matplotlib
-matplotlib.use('Agg')
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
@@ -10,7 +8,7 @@ from pathlib import Path
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 
-from core.acquisitions import get_acquisition
+from core.acquisitions import get_acquisition, get_beta_linear_schedule
 from core.models import GPRModule
 from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
@@ -18,6 +16,8 @@ from core.optimization import bayes_opt_loop_dist_robust
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist_1d, get_discrete_uniform_dist_1d, \
     get_margin, get_robust_expectation_and_action
 from metrics.plotting import plot_function_2d, plot_bo_points_2d, plot_robust_regret, plot_gp_2d
+
+matplotlib.use('Agg')
 
 ex = Experiment("DRBO")
 ex.observers.append(FileStorageObserver('runs'))
@@ -37,6 +37,7 @@ def rand_func():
     opt_max_iter = 10
     num_bo_iters = 200
     num_init_points = 10
+    beta_schedule = 'constant'  # 'constant' or 'linear'
     ref_var = 0.05
     true_mean = 0.2
     true_var = 0.05
@@ -46,7 +47,7 @@ def rand_func():
 
 @ex.automain
 def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_points,
-         dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points,
+         dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_schedule,
          ref_var, true_mean, true_var, seed, show_plots):
     for divergence in ['MMD', 'TV', 'modified_chi_squared']:
         for ref_mean in [0, 0.25, 0.5]:
@@ -85,15 +86,15 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                                                                   epsilon=margin_func(0),
                                                                                   obj_func=obj_func)
 
-            #for acq_name in ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox']:
-            for acq_name in ['WorstCaseSensTS', 'CubicApproxTS']:
-                for beta_const in [0, 0.5, 1, 2]:
-                    file_name = "{}-{}-{}-seed{}-beta{}-refmean{}".format(obj_func_name,
-                                                                          divergence,
-                                                                          acq_name,
-                                                                          seed,
-                                                                          beta_const,
-                                                                          ref_mean)
+            for acq_name in ['DRBOWorstCaseSens', 'DRBOCubicApprox', 'WorstCaseSensTS', 'CubicApproxTS']:
+                for beta_const in [0]:
+                    file_name = "{}-{}-{}-seed{}-beta{}{}-refmean{}".format(obj_func_name,
+                                                                            divergence,
+                                                                            acq_name,
+                                                                            seed,
+                                                                            beta_const,
+                                                                            beta_schedule,
+                                                                            ref_mean)
                     print("==========================")
                     print("Running experiment " + file_name)
                     print("Using margin = {}".format(margin))
@@ -110,6 +111,13 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                       opt_max_iter=opt_max_iter)
 
                     # Acquisition
+                    # Create beta schedule
+                    if beta_schedule == 'constant':
+                        beta = lambda x: beta_const
+                    elif beta_schedule == 'linear':
+                        beta = get_beta_linear_schedule(2, 0, 100)
+                    else:
+                        raise Exception("Incorrect beta_schedule provided")
                     acquisition = get_acquisition(acq_name=acq_name,
                                                   beta=lambda x: beta_const,
                                                   divergence=divergence)  # TODO: Implement beta function
@@ -133,7 +141,8 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                     # Plots
                     query_points = final_dataset.query_points.numpy()
                     maximizer = search_points[[np.argmax(obj_func(search_points))]]
-                    title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}".format(beta_const)
+                    title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}{}".format(
+                        beta_const, beta_schedule)
 
                     if dims == 2:
                         Path("runs/plots").mkdir(parents=True, exist_ok=True)
@@ -155,7 +164,8 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                                                               ref_dist_func=ref_dist_func,
                                                                               margin_func=margin_func,
                                                                               divergence=divergence,
-                                                                              robust_expectation_action=(robust_expectation, robust_action),
+                                                                              robust_expectation_action=(
+                                                                                  robust_expectation, robust_action),
                                                                               title=title)
                     fig.savefig("runs/plots/" + file_name + "-regret.png")
                     plt.close(fig)
