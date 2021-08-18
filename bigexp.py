@@ -119,7 +119,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                     else:
                         raise Exception("Incorrect beta_schedule provided")
                     acquisition = get_acquisition(acq_name=acq_name,
-                                                  beta=lambda x: beta_const,
+                                                  beta=beta,
                                                   divergence=divergence)  # TODO: Implement beta function
 
                     # Main BO loop
