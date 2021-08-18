@@ -3,7 +3,7 @@ from numpy.random import default_rng
 from core.utils import cholesky_inverse
 
 
-def sample_W_b_SqExp(lengthscales, m=100):
+def sample_W_b_SqExp(lengthscales, m=50):
     """
     Samples the W matrix and b vector required to approximate sample paths from a GP posterior using random Fourier
     features, as described by (Hernandez-Lobato et. al., 2014). This method samples from the probability distribution
@@ -26,7 +26,7 @@ def sample_W_b_SqExp(lengthscales, m=100):
 def fourier_features(X, W, b):
     """
     Given sampled tensors W and b, construct Fourier features of X, i.e. Phi matrix.
-    :param X: matrix of shape (n, d).
+    :param X: matrix of shape (n, d). Any inputs in the domain (not necessarily observations).
     :param W: matrix of shape (m, d).
     :param b: matrix of shape (m, 1).
     :return: matrix of shape (n, m).
@@ -60,8 +60,8 @@ def sample_theta(W, b, X, y, sigma):
     :param W: matrix of shape (m, d). m is the number of random Fourier features, d is the dimensionality of the
     dataset.
     :param b: vector of shape (m, 1).
-    :param X: Input points of shape (n, d).
-    :param y: Output values of shape (n).
+    :param X: Input points of shape (n, d). Observations.
+    :param y: Observed output values of shape (n).
     :param sigma: float. Observational variance.
     :return: vector of shape (m).
     """
@@ -84,3 +84,27 @@ def sample_theta(W, b, X, y, sigma):
         theta_sample = sigma * c + mean
 
     return theta_sample
+
+
+def sample_gp_SqExp(domain, dataset, lengthscales, sigma, m=50):
+    """
+    Samples a function from the GP posterior using an ARD squared exponential kernel and with observations (X, y), using
+    m random Fourier features.
+    :param domain: array of shape (c, d). Entire input domain.
+    :param dataset: Trieste Dataset. dataset.astuple() should return (X, y) where X is the input points of shape (n, d)
+    and y is the output values of shape (n).
+    :param lengthscales: array of shape (d).
+    :param sigma: float. Observational variance.
+    :param m: Number of Fourier features to use.
+    :return: sampled function values. array of shape (c).
+    """
+    W, b = sample_W_b_SqExp(lengthscales, m)
+    X, y = dataset.astuple()
+    if type(X) is not np.ndarray:
+        X = X.numpy()
+    if type(y) is not np.ndarray:
+        y = y.numpy()
+    y = np.squeeze(y)
+    theta = sample_theta(W, b, X, y, sigma)
+    domain_features = fourier_features(domain, W, b)
+    return domain_features @ theta

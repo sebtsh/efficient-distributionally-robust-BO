@@ -6,7 +6,7 @@ from pathlib import Path
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 
-from core.acquisitions import get_acquisition
+from core.acquisitions import get_acquisition, get_beta_linear_schedule
 from core.models import GPRModule
 from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
@@ -36,23 +36,25 @@ def rand_func():
     num_bo_iters = 200
     num_init_points = 10
     beta_const = 0
-    ref_mean = 0
+    beta_schedule = 'constant'  # 'constant' or 'linear'
+    ref_mean = 0.5
     ref_var = 0.05
     true_mean = 0.2
     true_var = 0.05
-    seed = 3
+    seed = 0
     show_plots = False
 
 
 @ex.automain
 def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_dim, rand_func_num_points,
          dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_const,
-         ref_mean, ref_var, true_mean, true_var, seed, show_plots):
+         beta_schedule, ref_mean, ref_var, true_mean, true_var, seed, show_plots):
     np.random.seed(seed)
+    lengthscales = np.array([ls] * dims)
 
-    f_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls] * dims)
+    f_kernel = gpf.kernels.SquaredExponential(lengthscales=lengthscales)
     if divergence == 'MMD':
-        mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls])  # 1d for now
+        mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=np.array([ls]))  # 1d for now
     else:
         mmd_kernel = None
 
@@ -76,8 +78,16 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
                       opt_max_iter=opt_max_iter)
 
     # Acquisition
+    # Create beta schedule
+    if beta_schedule == 'constant':
+        beta = lambda x: beta_const
+    elif beta_schedule == 'linear':
+        beta = get_beta_linear_schedule(2, 0, 100)
+    else:
+        raise Exception("Incorrect beta_schedule provided")
+
     acquisition = get_acquisition(acq_name=acq_name,
-                                  beta=lambda x: beta_const,
+                                  beta=beta,
                                   divergence=divergence)
 
     # Distribution generating functions
@@ -107,13 +117,15 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
     # Plots
     query_points = final_dataset.query_points.numpy()
     maximizer = search_points[[np.argmax(obj_func(search_points))]]
-    title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}".format(beta_const)
-    file_name = "{}-{}-{}-seed{}-beta{}-refmean{}".format(obj_func_name,
-                                                          divergence,
-                                                          acq_name,
-                                                          seed,
-                                                          beta_const,
-                                                          ref_mean)
+    title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}".format(beta_const) \
+            + beta_schedule
+    file_name = "{}-{}-{}-seed{}-beta{}{}-refmean{}".format(obj_func_name,
+                                                            divergence,
+                                                            acq_name,
+                                                            seed,
+                                                            beta_const,
+                                                            beta_schedule,
+                                                            ref_mean)
     if dims == 2:
         Path("runs/plots").mkdir(parents=True, exist_ok=True)
         fig, ax = plot_function_2d(obj_func, lowers, uppers, grid_density_per_dim, contour=True,
@@ -142,7 +154,8 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
                                                               ref_dist_func=ref_dist_func,
                                                               margin_func=margin_func,
                                                               divergence=divergence,
-                                                              robust_expectation_action=(robust_expectation, robust_action),
+                                                              robust_expectation_action=(
+                                                                  robust_expectation, robust_action),
                                                               title=title)
     fig.savefig("runs/plots/" + file_name + "-regret.png")
 

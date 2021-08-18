@@ -7,16 +7,18 @@ from gpflow.kernels import Kernel
 from trieste.type import TensorType
 
 from core.models import ModelOptModule
-from core.utils import get_upper_lower_bounds, get_robust_expectation_and_action, cholesky_inverse, worst_case_sens, \
+from core.utils import get_upper_lower_bounds, get_robust_expectation_and_action, worst_case_sens, \
     get_cubic_approx_func, cross_product, get_action_contexts
+from core.fourier_features import sample_gp_SqExp
 
 
-def GP_UCB_point(model: ModelOptModule,
-                 beta: float,
-                 domain: TensorType):
-    f_mean, f_var = model.predict_f(domain)
-    scores = f_mean + beta * np.sqrt(f_var)
-    return domain[np.argmax(scores)][None, :]
+def get_beta_linear_schedule(start_beta, end_beta, steps):
+    def beta(t):
+        if t >= steps:
+            return end_beta
+        else:
+            return start_beta - t * ((start_beta - end_beta) / steps)
+    return beta
 
 
 def get_acquisition(acq_name,
@@ -188,15 +190,22 @@ class WorstCaseSensTS(Acquisition):
                 ref_dist: TensorType,
                 divergence: str,
                 kernel: Kernel,
-                epsilon: float):
+                epsilon: float,
+                rff: bool = True):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         adv_lower_bounds = []
         domain = cross_product(action_points, context_points)
 
-        fmean, fvar = model.predict_f(domain, full_cov=True)
-        rng = default_rng()
-        all_fvals = rng.multivariate_normal(np.squeeze(fmean), np.squeeze(fvar))  # (num_action_points * num_context_points)
+        if rff:
+            all_fvals = sample_gp_SqExp(domain=domain,
+                                        dataset=model.dataset,
+                                        lengthscales=model.gp.kernel.lengthscales.numpy(),
+                                        sigma=model.gp.likelihood.variance.numpy())
+        else:
+            fmean, fvar = model.predict_f(domain, full_cov=True)
+            rng = default_rng()
+            all_fvals = rng.multivariate_normal(np.squeeze(fmean), np.squeeze(fvar))  # (num_action_points * num_context_points)
         for i in range(num_action_points):
             fvals = all_fvals[i * num_context_points:(i+1) * num_context_points]
             expected_fvals = np.sum(ref_dist * fvals)  # SAA
@@ -290,15 +299,22 @@ class CubicApproxTS(Acquisition):
                 ref_dist: TensorType,
                 divergence: str,
                 kernel: Kernel,
-                epsilon: float):
+                epsilon: float,
+                rff: bool = True):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         adv_approxs = []
         domain = cross_product(action_points, context_points)
 
-        fmean, fvar = model.predict_f(domain, full_cov=True)
-        rng = default_rng()
-        all_fvals = rng.multivariate_normal(np.squeeze(fmean), np.squeeze(fvar))  # (num_action_points * num_context_points)
+        if rff:
+            all_fvals = sample_gp_SqExp(domain=domain,
+                                        dataset=model.dataset,
+                                        lengthscales=model.gp.kernel.lengthscales.numpy(),
+                                        sigma=model.gp.likelihood.variance.numpy())
+        else:
+            fmean, fvar = model.predict_f(domain, full_cov=True)
+            rng = default_rng()
+            all_fvals = rng.multivariate_normal(np.squeeze(fmean), np.squeeze(fvar))  # (num_action_points * num_context_points)
 
         for i in range(num_action_points):
             fvals = all_fvals[i * num_context_points:(i+1) * num_context_points]
