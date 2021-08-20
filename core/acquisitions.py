@@ -46,6 +46,10 @@ def get_acquisition(acq_name,
         return WorstCaseSensTS(**args)
     elif acq_name == 'CubicApproxTS':
         return CubicApproxTS(**args)
+    elif acq_name == 'DRBOMidApprox':
+        return DRBOMidApprox(**args)
+    elif acq_name == 'MidApproxTS':
+        return MidApproxTS(**args)
     else:
         raise Exception('Acquisition name is wrong')
 
