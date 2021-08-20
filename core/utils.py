@@ -53,19 +53,20 @@ def get_upper_lower_bounds(model,
     return upper, lower
 
 
-def cholesky_inverse(M):
+def cholesky_inverse(M, jitter=gpf.config.default_jitter()):
     """
     Computes the inverse of M using the Cholesky decomposition. M must be a positive definite matrix.
     :param M: shape (b, m, m) or (m, m)
+    :param jitter:
     :return:
     """
     if len(M.shape) == 3:
         b, m, _ = M.shape
-        inv_L = np.linalg.inv(np.linalg.cholesky(M + gpf.config.default_jitter() * np.eye(m)[None, :, :]))
+        inv_L = np.linalg.inv(np.linalg.cholesky(M + jitter * np.eye(m)[None, :, :]))
         P = np.transpose(inv_L, [0, 2, 1])
     elif len(M.shape) == 2:
         m, _ = M.shape
-        inv_L = np.linalg.inv(np.linalg.cholesky(M + gpf.config.default_jitter() * np.eye(m)))
+        inv_L = np.linalg.inv(np.linalg.cholesky(M + jitter * np.eye(m)))
         P = np.transpose(inv_L)
     else:
         raise Exception("Wrong shape passed to cholesky_inverse")
@@ -272,7 +273,7 @@ def worst_case_sens(fvals,
                     divergence):
     if divergence == 'MMD':
         num_context_points = len(context_points)
-        K_inv = cholesky_inverse(kernel(context_points))
+        K_inv = cholesky_inverse(kernel(context_points), jitter=1e-03)
         f_T_K_inv = fvals[None, :] @ K_inv  # (1, num_context_points)
         worst_case_sensitivity = np.sqrt(f_T_K_inv @ fvals[:, None] -
                                          ((np.squeeze(f_T_K_inv @ np.ones((num_context_points, 1))) ** 2) /
@@ -318,18 +319,11 @@ def get_cubic_approx_func(context_points,
     f_eps_max = np.min(fvals)
     f_prime_0 = -np.squeeze(worst_case_sensitivity)
     f_0 = ref_dist @ fvals
-    M = np.array([[eps_max ** 3, eps_max ** 2],
-                  [3 * (eps_max ** 2), 2 * eps_max]])
-    c = np.array([f_eps_max - f_prime_0 * eps_max - f_0, - f_prime_0])
-    x = np.linalg.solve(M, c)
 
-    # Test closed form solutions
     alpha = f_eps_max - f_prime_0 * eps_max - f_0
     beta = -f_prime_0
     A = (eps_max * beta - 2 * alpha) / (eps_max ** 3)
     B = (3 * alpha - eps_max * beta) / (eps_max ** 2)
-    assert(np.allclose(A, x[0]))
-    assert(np.allclose(B, x[1]))
 
     if divergence == 'MMD' or divergence == 'TV':
         def f(eps):
@@ -352,7 +346,7 @@ def get_cubic_approx_func(context_points,
         def f(eps):
             sqrt_eps = np.sqrt(eps)
             if sqrt_eps < eps_max:  # eps_max here is actually square root eps_max
-                fval = x[0] * (sqrt_eps ** 3) + x[1] * (sqrt_eps ** 2) + f_prime_0 * sqrt_eps + f_0
+                fval = A * (sqrt_eps ** 3) + B * (sqrt_eps ** 2) + f_prime_0 * sqrt_eps + f_0
                 linear_approx = f_prime_0 * sqrt_eps + f_0
                 if fval < f_eps_max:
                     return f_eps_max
@@ -366,6 +360,70 @@ def get_cubic_approx_func(context_points,
         return np.vectorize(f)
 
 
+def get_mid_approx_func(context_points,
+                        fvals,
+                        kernel,
+                        ref_dist,
+                        worst_case_sensitivity,
+                        divergence):
+    """
+    Approximates the adversarial expectation V over epsilon using a piecewise linear function that is the convex
+    function in the middle of V's lower and upper bounds, which can be cheaply computed.
+    :param action: array of shape (1, d_x)
+    :param context_points:
+    :param obj_func:
+    :param kernel:
+    :param ref_dist:
+    :param worst_case_sensitivity:
+    :param divergence:
+    :return:
+    """
+
+    worst_dist = np.zeros(len(context_points))
+    worst_dist[np.argmin(fvals)] = 1
+
+    f_eps_max = np.min(fvals)
+    f_prime_0 = -np.squeeze(worst_case_sensitivity)
+    f_0 = ref_dist @ fvals
+    eps_l = (f_eps_max - f_0) / f_prime_0
+
+    if divergence == 'MMD':
+        eps_max = np.squeeze(MMD(worst_dist, ref_dist, kernel, context_points))
+    elif divergence == 'TV':
+        eps_max = np.squeeze(TV(worst_dist, ref_dist))
+    elif divergence == 'modified_chi_squared':
+        eps_max = np.sqrt(np.squeeze(modified_chi_squared(worst_dist, ref_dist)))  # Take the square root
+    else:
+        raise Exception("Invalid divergence passed to get_mid_approx_func")
+
+    if divergence == 'MMD' or divergence == 'TV':
+        def f(eps):
+            if 0 <= eps <= eps_l:
+                fval = f_0 + 0.5 * eps * (f_prime_0 + (f_eps_max - f_0) / eps_max)
+                return fval
+            elif eps_l < eps < eps_max:
+                fval = 0.5 * (f_0 + eps * ((f_eps_max - f_0) / eps_max) + f_eps_max)
+                return fval
+            else:
+                return f_eps_max
+
+        return np.vectorize(f)
+    elif divergence == 'modified_chi_squared':
+        # Account for the fact that what we have is actually a function on square root epsilon
+        def f(eps):
+            sqrt_eps = np.sqrt(eps)
+            if 0 <= sqrt_eps <= eps_l:
+                fval = f_0 + 0.5 * sqrt_eps * (f_prime_0 + (f_eps_max - f_0) / eps_max)
+                return fval
+            elif eps_l < sqrt_eps < eps_max:
+                fval = 0.5 * (f_0 + sqrt_eps * ((f_eps_max - f_0) / eps_max) + f_eps_max)
+                return fval
+            else:
+                return f_eps_max
+
+        return np.vectorize(f)
+
+
 def get_action_contexts(action, domain, num_context_points):
     """
 
@@ -373,4 +431,4 @@ def get_action_contexts(action, domain, num_context_points):
     :param domain: cross product of actions and contexts. array of shape (m * n, d_x + d_y).
     :return: array of shape (n, d_x + d_y)
     """
-    return domain[action * num_context_points:(action+1) * num_context_points, :]
+    return domain[action * num_context_points:(action + 1) * num_context_points, :]

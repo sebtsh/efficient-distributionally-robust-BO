@@ -49,8 +49,14 @@ def rand_func():
 def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_points,
          dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_schedule,
          ref_var, true_mean, true_var, seed, show_plots):
-    for divergence in ['MMD', 'TV', 'modified_chi_squared']:
-        for ref_mean in [0, 0.25, 0.5]:
+    divergences = ['MMD', 'TV', 'modified_chi_squared']
+    ref_means = [0, 0.25, 0.5]
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox', 'DRBOMidApprox', 'WorstCaseSensTS',
+                    'CubicApproxTS', 'MidApproxTS']
+    beta_consts = [0, 0.5, 1, 2, 3, 4]
+
+    for divergence in divergences:
+        for ref_mean in ref_means:
             # Calculate ground truth (robust exp) once to speed things up. Assumes constant dist and epsilon functions
 
             # Action space (1d for now)
@@ -86,8 +92,8 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                                                                   epsilon=margin_func(0),
                                                                                   obj_func=obj_func)
 
-            for acq_name in ['DRBOWorstCaseSens', 'DRBOCubicApprox', 'WorstCaseSensTS', 'CubicApproxTS']:
-                for beta_const in [0]:
+            for acq_name in acquisitions:
+                for beta_const in beta_consts:
                     file_name = "{}-{}-{}-seed{}-beta{}{}-refmean{}".format(obj_func_name,
                                                                             divergence,
                                                                             acq_name,
@@ -120,7 +126,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                         raise Exception("Incorrect beta_schedule provided")
                     acquisition = get_acquisition(acq_name=acq_name,
                                                   beta=beta,
-                                                  divergence=divergence)  # TODO: Implement beta function
+                                                  divergence=divergence)
 
                     # Main BO loop
                     final_dataset, model_params, average_acq_time = bayes_opt_loop_dist_robust(model=model,

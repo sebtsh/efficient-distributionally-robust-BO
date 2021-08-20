@@ -35,14 +35,14 @@ def rand_func():
     opt_max_iter = 10
     num_bo_iters = 200
     num_init_points = 10
-    beta_const = 0
+    beta_const = 2
     beta_schedule = 'constant'  # 'constant' or 'linear'
     ref_mean = 0.5
     ref_var = 0.05
     true_mean = 0.2
     true_var = 0.05
-    seed = 0
-    show_plots = False
+    seed = 4
+    show_plots = True
 
 
 @ex.automain

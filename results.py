@@ -16,10 +16,11 @@ def default():
     num_init_points = 10
     num_seeds = 10
     show_plots = True
+    beta_schedule = 'constant'
 
 
 @ex.automain
-def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, figsize=(15, 6), dpi=None):
+def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, beta_schedule, figsize=(15, 6), dpi=None):
     Path("runs/results").mkdir(parents=True, exist_ok=True)
     divergences = ['MMD', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox', 'WorstCaseSensTS', 'CubicApproxTS']
@@ -28,16 +29,19 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, fi
                   'DRBOGeneral': '#fbb13c',
                   'DRBOWorstCaseSens': '#26c485',
                   'DRBOCubicApprox': '#00a6ed',
+                  'DRBOMidApprox': '#cbbf7a',
                   'WorstCaseSensTS': '#9f956c',
-                  'CubicApproxTS': '#2f4858'}
-    for ref_mean in [0, 0.25, 0.5]: 
+                  'CubicApproxTS': '#2f4858',
+                  'MidApproxTS': '#ce84ad'}
+    for ref_mean in [0, 0.25, 0.5]:
         for beta in [0, 0.5, 1, 2]:
             for divergence in divergences:
                 fig, axs = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
-                plot_name = "{}-{}-beta{}-refmean{}".format(obj_func_name,
-                                                            divergence,
-                                                            beta,
-                                                            ref_mean)
+                plot_name = "{}-{}-beta{}{}-refmean{}".format(obj_func_name,
+                                                              divergence,
+                                                              beta,
+                                                              beta_schedule,
+                                                              ref_mean)
                 print("Plotting " + plot_name)
                 axs[0].set_title(plot_name + ": Immediate")
                 axs[1].set_title(plot_name + ": Cumulative")
@@ -47,17 +51,18 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, fi
                     all_cumu_regrets = np.zeros((num_seeds, num_bo_iters))
                     all_times = []
                     for seed in range(num_seeds):
-                        file_name = "{}-{}-{}-seed{}-beta{}-refmean{}.p".format(obj_func_name,
-                                                                              divergence,
-                                                                              acquisition,
-                                                                              seed,
-                                                                              beta,
-                                                                              ref_mean)
+                        file_name = "{}-{}-{}-seed{}-beta{}{}-refmean{}.p".format(obj_func_name,
+                                                                                  divergence,
+                                                                                  acquisition,
+                                                                                  seed,
+                                                                                  beta,
+                                                                                  beta_schedule,
+                                                                                  ref_mean)
                         regrets, cumulative_regrets, average_acq_time, query_points = pickle.load(
                             open("runs/" + file_name, "rb"))
                         # cut out initial points
                         regrets = np.array(regrets[num_init_points:])
-                        base_cumulative_regret = cumulative_regrets[num_init_points-1]
+                        base_cumulative_regret = cumulative_regrets[num_init_points - 1]
                         cumulative_regrets = np.array(cumulative_regrets[num_init_points:]) - base_cumulative_regret
                         all_regrets[seed] = regrets
                         all_cumu_regrets[seed] = cumulative_regrets
@@ -69,20 +74,21 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, fi
 
                     # Immediate regret
                     axs[0].plot(x, mean_regrets, label=acquisition, color=color)
-                    axs[0].fill_between(x, mean_regrets-std_err_regrets, mean_regrets+std_err_regrets,
-                                           alpha=0.2, color=color)
+                    axs[0].fill_between(x, mean_regrets - std_err_regrets, mean_regrets + std_err_regrets,
+                                        alpha=0.2, color=color)
                     axs[0].legend()
 
                     # Cumulative regret
                     axs[1].plot(x, mean_cumu_regrets, label=acquisition, color=color)
-                    axs[1].fill_between(x, mean_cumu_regrets-std_err_cumu_regrets, mean_cumu_regrets+std_err_cumu_regrets,
-                                           alpha=0.2, color=color)
+                    axs[1].fill_between(x, mean_cumu_regrets - std_err_cumu_regrets,
+                                        mean_cumu_regrets + std_err_cumu_regrets,
+                                        alpha=0.2, color=color)
                     axs[1].legend()
 
                     # Average acquisition time
                     print("{}-{} average acquisition time in seconds: {}".format(divergence,
-                        acquisition,
-                        np.mean(all_times)))
-                fig.savefig("runs/results/" + plot_name +"-regret.png")
+                                                                                 acquisition,
+                                                                                 np.mean(all_times)))
+                fig.savefig("runs/results/" + plot_name + "-regret.png")
     if show_plots:
         plt.show()

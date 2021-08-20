@@ -3,7 +3,7 @@ from numpy.random import default_rng
 from core.utils import cholesky_inverse
 
 
-def sample_W_b_SqExp(lengthscales, m=50):
+def sample_W_b_SqExp(lengthscales, m=1000):
     """
     Samples the W matrix and b vector required to approximate sample paths from a GP posterior using random Fourier
     features, as described by (Hernandez-Lobato et. al., 2014). This method samples from the probability distribution
@@ -86,7 +86,7 @@ def sample_theta(W, b, X, y, sigma):
     return theta_sample
 
 
-def sample_gp_SqExp(domain, dataset, lengthscales, sigma, m=50):
+def sample_gp_SqExp(domain, dataset, lengthscales, sigma, m=1000):
     """
     Samples a function from the GP posterior using an ARD squared exponential kernel and with observations (X, y), using
     m random Fourier features.

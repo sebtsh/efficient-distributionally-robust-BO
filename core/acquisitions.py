@@ -8,7 +8,7 @@ from trieste.type import TensorType
 
 from core.models import ModelOptModule
 from core.utils import get_upper_lower_bounds, get_robust_expectation_and_action, worst_case_sens, \
-    get_cubic_approx_func, cross_product, get_action_contexts
+    get_cubic_approx_func, cross_product, get_action_contexts, get_mid_approx_func
 from core.fourier_features import sample_gp_SqExp
 
 
@@ -18,6 +18,7 @@ def get_beta_linear_schedule(start_beta, end_beta, steps):
             return end_beta
         else:
             return start_beta - t * ((start_beta - end_beta) / steps)
+
     return beta
 
 
@@ -164,6 +165,7 @@ class DRBOWorstCaseSens(Acquisition):
 
             adv_lower_bound = expected_ucb - (sens_factor * worst_case_sensitivity)
             adv_lower_bounds.append(adv_lower_bound)
+
         max_idx = np.argmax(adv_lower_bounds)
         return action_points[max_idx:max_idx + 1]
 
@@ -205,9 +207,10 @@ class WorstCaseSensTS(Acquisition):
         else:
             fmean, fvar = model.predict_f(domain, full_cov=True)
             rng = default_rng()
-            all_fvals = rng.multivariate_normal(np.squeeze(fmean), np.squeeze(fvar))  # (num_action_points * num_context_points)
+            all_fvals = rng.multivariate_normal(np.squeeze(fmean),
+                                                np.squeeze(fvar))  # (num_action_points * num_context_points)
         for i in range(num_action_points):
-            fvals = all_fvals[i * num_context_points:(i+1) * num_context_points]
+            fvals = all_fvals[i * num_context_points:(i + 1) * num_context_points]
             expected_fvals = np.sum(ref_dist * fvals)  # SAA
 
             worst_case_sensitivity = worst_case_sens(fvals=fvals,
@@ -235,6 +238,7 @@ class DRBOCubicApprox(Acquisition):
     Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
     approximation for large epsilon.
     """
+
     def __init__(self,
                  beta: Callable,
                  divergence: str,
@@ -283,6 +287,7 @@ class CubicApproxTS(Acquisition):
     Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
     approximation for large epsilon.
     """
+
     def __init__(self,
                  beta: Callable,
                  divergence: str,
@@ -314,10 +319,11 @@ class CubicApproxTS(Acquisition):
         else:
             fmean, fvar = model.predict_f(domain, full_cov=True)
             rng = default_rng()
-            all_fvals = rng.multivariate_normal(np.squeeze(fmean), np.squeeze(fvar))  # (num_action_points * num_context_points)
+            all_fvals = rng.multivariate_normal(np.squeeze(fmean),
+                                                np.squeeze(fvar))  # (num_action_points * num_context_points)
 
         for i in range(num_action_points):
-            fvals = all_fvals[i * num_context_points:(i+1) * num_context_points]
+            fvals = all_fvals[i * num_context_points:(i + 1) * num_context_points]
 
             worst_case_sensitivity = worst_case_sens(fvals=fvals,
                                                      context_points=context_points,
@@ -330,6 +336,115 @@ class CubicApproxTS(Acquisition):
                                                   ref_dist=ref_dist,
                                                   worst_case_sensitivity=worst_case_sensitivity,
                                                   divergence=divergence)
+
+            adv_approxs.append(V_approx_func(epsilon))
+        max_idx = np.argmax(adv_approxs)
+        return action_points[max_idx:max_idx + 1]
+
+
+class DRBOMidApprox(Acquisition):
+    """
+    Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
+    approximation for large epsilon.
+    """
+
+    def __init__(self,
+                 beta: Callable,
+                 divergence: str,
+                 **kwargs):
+        super().__init__()
+        self.beta = beta
+        self.divergence = divergence
+
+    def acquire(self,
+                model: ModelOptModule,
+                action_points: TensorType,
+                context_points: TensorType,
+                t: int,
+                ref_dist: TensorType,
+                divergence: str,
+                kernel: Kernel,
+                epsilon: float):
+        num_action_points = len(action_points)
+        num_context_points = len(context_points)
+        adv_approxs = []
+        domain = cross_product(action_points, context_points)
+
+        for i in range(num_action_points):
+            action_contexts = get_action_contexts(i, domain, num_context_points)
+            fvals, _ = get_upper_lower_bounds(model, action_contexts, self.beta(t))  # (num_context_points, )
+
+            worst_case_sensitivity = worst_case_sens(fvals=fvals,
+                                                     context_points=context_points,
+                                                     kernel=kernel,
+                                                     divergence=divergence)
+
+            V_approx_func = get_mid_approx_func(context_points=context_points,
+                                                fvals=fvals,
+                                                kernel=kernel,
+                                                ref_dist=ref_dist,
+                                                worst_case_sensitivity=worst_case_sensitivity,
+                                                divergence=divergence)
+
+            adv_approxs.append(V_approx_func(epsilon))
+        max_idx = np.argmax(adv_approxs)
+        return action_points[max_idx:max_idx + 1]
+
+
+class MidApproxTS(Acquisition):
+    """
+    Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
+    approximation for large epsilon.
+    """
+
+    def __init__(self,
+                 beta: Callable,
+                 divergence: str,
+                 **kwargs):
+        super().__init__()
+        self.beta = beta
+        self.divergence = divergence
+
+    def acquire(self,
+                model: ModelOptModule,
+                action_points: TensorType,
+                context_points: TensorType,
+                t: int,
+                ref_dist: TensorType,
+                divergence: str,
+                kernel: Kernel,
+                epsilon: float,
+                rff: bool = True):
+        num_action_points = len(action_points)
+        num_context_points = len(context_points)
+        adv_approxs = []
+        domain = cross_product(action_points, context_points)
+
+        if rff:
+            all_fvals = sample_gp_SqExp(domain=domain,
+                                        dataset=model.dataset,
+                                        lengthscales=model.gp.kernel.lengthscales.numpy(),
+                                        sigma=model.gp.likelihood.variance.numpy())
+        else:
+            fmean, fvar = model.predict_f(domain, full_cov=True)
+            rng = default_rng()
+            all_fvals = rng.multivariate_normal(np.squeeze(fmean),
+                                                np.squeeze(fvar))  # (num_action_points * num_context_points)
+
+        for i in range(num_action_points):
+            fvals = all_fvals[i * num_context_points:(i + 1) * num_context_points]
+
+            worst_case_sensitivity = worst_case_sens(fvals=fvals,
+                                                     context_points=context_points,
+                                                     kernel=kernel,
+                                                     divergence=divergence)
+
+            V_approx_func = get_mid_approx_func(context_points=context_points,
+                                                fvals=fvals,
+                                                kernel=kernel,
+                                                ref_dist=ref_dist,
+                                                worst_case_sensitivity=worst_case_sensitivity,
+                                                divergence=divergence)
 
             adv_approxs.append(V_approx_func(epsilon))
         max_idx = np.argmax(adv_approxs)
