@@ -65,7 +65,7 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
                 np.random.seed(seed)
 
                 f_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls] * dims)
-                if divergence == 'MMD':
+                if divergence == 'MMD' or divergence == 'MMD_approx':
                     mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls])  # 1d for now
                 else:
                     mmd_kernel = None

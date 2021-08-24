@@ -53,7 +53,7 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
     lengthscales = np.array([ls] * dims)
 
     f_kernel = gpf.kernels.SquaredExponential(lengthscales=lengthscales)
-    if divergence == 'MMD':
+    if divergence == 'MMD' or divergence == 'MMD_approx':
         mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=np.array([ls]))  # 1d for now
     else:
         mmd_kernel = None

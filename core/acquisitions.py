@@ -158,7 +158,7 @@ class DRBOWorstCaseSens(Acquisition):
                                                      kernel=kernel,
                                                      divergence=divergence)
 
-            if divergence == 'MMD':
+            if divergence == 'MMD' or divergence == 'MMD_approx':
                 sens_factor = epsilon  # might be square root epsilon for others
             elif divergence == 'TV':
                 sens_factor = epsilon
@@ -222,7 +222,7 @@ class WorstCaseSensTS(Acquisition):
                                                      kernel=kernel,
                                                      divergence=divergence)
 
-            if divergence == 'MMD':
+            if divergence == 'MMD' or 'MMD_approx':
                 sens_factor = epsilon  # might be square root epsilon for others
             elif divergence == 'TV':
                 sens_factor = epsilon

@@ -49,10 +49,9 @@ def rand_func():
 def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_points,
          dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_schedule,
          ref_var, true_mean, true_var, seed, show_plots):
-    divergences = ['MMD', 'TV', 'modified_chi_squared']
+    divergences = ['MMD_approx']
     ref_means = [0, 0.25, 0.5]
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox', 'DRBOMidApprox', 'WorstCaseSensTS',
-                    'CubicApproxTS', 'MidApproxTS']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox', 'DRBOMidApprox']
     beta_consts = [0, 0.5, 1, 2, 3, 4]
 
     for divergence in divergences:
@@ -67,7 +66,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
 
             # We can do this because not optimizing kernel
             f_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls] * dims)
-            if divergence == 'MMD':
+            if divergence == 'MMD' or divergence == 'MMD_approx':
                 mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls])  # 1d for now
             else:
                 mmd_kernel = None

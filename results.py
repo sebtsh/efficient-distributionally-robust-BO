@@ -22,7 +22,7 @@ def default():
 @ex.automain
 def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, beta_schedule, figsize=(15, 6), dpi=None):
     Path("runs/results").mkdir(parents=True, exist_ok=True)
-    divergences = ['MMD', 'TV', 'modified_chi_squared']
+    divergences = ['MMD', 'MMD_approx', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox', 'WorstCaseSensTS', 'CubicApproxTS']
     x = np.arange(num_bo_iters)
     color_dict = {'GP-UCB': '#d7263d',

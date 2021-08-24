@@ -477,7 +477,7 @@ def plot_robust_regret(obj_func,
     regrets = []
     cumulative_regrets = []
     print("Plotting cumulative robust regret")
-    if divergence == 'MMD':
+    if divergence == 'MMD' or divergence == 'MMD_approx':
         M = kernel(context_points)
     else:
         M = None

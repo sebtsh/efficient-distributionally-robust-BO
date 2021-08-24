@@ -130,7 +130,7 @@ def adversarial_expectation(f: TensorType,
     w = cp.Variable(num_context)
 
     objective = cp.Minimize(w @ f)
-    if divergence == "MMD":
+    if divergence == "MMD" or divergence == "MMD_approx":  # If we're calculating this, we want the true MMD
         constraints = [cp.sum(w) == 1.0,
                        w >= 0.,
                        cp.quad_form(w - w_t, M) <= epsilon ** 2]
@@ -183,7 +183,7 @@ def get_robust_expectation_and_action(action_points: TensorType,
 
     for i in range(num_actions):
         action_contexts = get_action_contexts(i, domain, num_context_points)
-        if divergence == 'MMD':
+        if divergence == 'MMD' or divergence == 'MMD_approx':
             M = kernel(action_contexts)
         else:
             M = None
@@ -217,7 +217,7 @@ def get_margin(ref_dist: TensorType,
     :param divergence: str, 'MMD', 'TV' or 'modified_chi_squared''
     :return:
     """
-    if divergence == 'MMD':
+    if divergence == 'MMD' or divergence == 'MMD_approx':
         return MMD(ref_dist, true_dist, mmd_kernel, context_points)
     elif divergence == 'TV':
         return TV(ref_dist, true_dist)
@@ -271,13 +271,15 @@ def worst_case_sens(fvals,
                     context_points,
                     kernel,
                     divergence):
+    num_context_points = len(context_points)
     if divergence == 'MMD':
-        num_context_points = len(context_points)
         K_inv = cholesky_inverse(kernel(context_points), jitter=1e-03)
         f_T_K_inv = fvals[None, :] @ K_inv  # (1, num_context_points)
         worst_case_sensitivity = np.sqrt(f_T_K_inv @ fvals[:, None] -
                                          ((np.squeeze(f_T_K_inv @ np.ones((num_context_points, 1))) ** 2) /
                                           np.sum(K_inv)))
+    elif divergence == 'MMD_approx':  # Approximate K in MMD worst-case sensitivity with identity matrix
+        worst_case_sensitivity = np.sqrt(fvals @ fvals - (np.sum(fvals) ** 2) / num_context_points)
     elif divergence == 'TV':
         worst_case_sensitivity = 0.5 * (np.max(fvals) - np.min(fvals))
     elif divergence == 'modified_chi_squared':
@@ -308,7 +310,7 @@ def get_cubic_approx_func(context_points,
 
     worst_dist = np.zeros(len(context_points))
     worst_dist[np.argmin(fvals)] = 1
-    if divergence == 'MMD':
+    if divergence == 'MMD' or divergence == 'MMD_approx':
         eps_max = np.squeeze(MMD(worst_dist, ref_dist, kernel, context_points))
     elif divergence == 'TV':
         eps_max = np.squeeze(TV(worst_dist, ref_dist))
@@ -325,7 +327,7 @@ def get_cubic_approx_func(context_points,
     A = (eps_max * beta - 2 * alpha) / (eps_max ** 3)
     B = (3 * alpha - eps_max * beta) / (eps_max ** 2)
 
-    if divergence == 'MMD' or divergence == 'TV':
+    if divergence == 'MMD' or divergence == 'MMD_approx' or divergence == 'TV':
         def f(eps):
             if eps < eps_max:
                 fval = A * (eps ** 3) + B * (eps ** 2) + f_prime_0 * eps + f_0
@@ -387,7 +389,7 @@ def get_mid_approx_func(context_points,
     f_0 = ref_dist @ fvals
     eps_l = (f_eps_max - f_0) / f_prime_0
 
-    if divergence == 'MMD':
+    if divergence == 'MMD' or divergence == 'MMD_approx':
         eps_max = np.squeeze(MMD(worst_dist, ref_dist, kernel, context_points))
     elif divergence == 'TV':
         eps_max = np.squeeze(TV(worst_dist, ref_dist))
@@ -396,7 +398,7 @@ def get_mid_approx_func(context_points,
     else:
         raise Exception("Invalid divergence passed to get_mid_approx_func")
 
-    if divergence == 'MMD' or divergence == 'TV':
+    if divergence == 'MMD' or divergence == 'MMD_approx' or divergence == 'TV':
         def f(eps):
             if 0 <= eps <= eps_l:
                 fval = f_0 + 0.5 * eps * (f_prime_0 + (f_eps_max - f_0) / eps_max)
