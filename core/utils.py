@@ -7,7 +7,7 @@ from gpflow.models.model import GPModel
 from gpflow.kernels import Kernel
 from trieste.space import Box, DiscreteSearchSpace
 from trieste.type import TensorType
-from scipy.stats import norm
+from scipy.stats import norm, multivariate_normal
 
 from core.models import ModelOptModule
 
@@ -87,7 +87,21 @@ def get_discrete_normal_dist_1d(context_points, mean, var):
     return np.squeeze((pdfs / np.sum(pdfs)))
 
 
-def get_discrete_uniform_dist_1d(context_points):
+def get_discrete_normal_dist(context_points, mean, cov):
+    """
+    Returns an array of shape |C| that is a probability distribution over the context set. Uses the normal distribution
+    with the specified mean and variance.
+    :param context_points: Array of shape (|C|, d)
+    :param mean: array of shape (d, )
+    :param cov: array of shape (d, d)
+    :return: array of shape (|C|, )
+    """
+    rv = multivariate_normal(mean=mean, cov=cov, allow_singular=False)
+    pdfs = rv.pdf(context_points)
+    return np.squeeze((pdfs / np.sum(pdfs)))
+
+
+def get_discrete_uniform_dist(context_points):
     """
     Returns an array of shape |C| that is a uniform probability distribution over the context set.
     :param context_points: Array of shape (|C|, 1)
@@ -115,7 +129,10 @@ def adversarial_expectation(f: TensorType,
                             M: TensorType,
                             w_t: TensorType,
                             epsilon: float,
-                            divergence: str):
+                            divergence: str,
+                            cvx_opt_max_iters: int = None,
+                            cvx_opt_verbose: bool = False,
+                            cvx_solver: str = 'ECOS'):
     """
     Calculates inf_Q E_{c~Q}[f(x, c)]
     :param f: Array of shape (|C|, ). We are adversarially minimizing the expectation of these values. Could be
@@ -124,6 +141,9 @@ def adversarial_expectation(f: TensorType,
     :param w_t: Array of shape (|C|, ). Reference distribution
     :param epsilon: margin. Radius of ball around which we can choose our adversarial distribution
     :param divergence: str, either 'MMD', 'TV' or 'modified_chi_squared'
+    :param cvx_opt_max_iters:
+    :param cvx_opt_verbose:
+    :param cvx_solver:
     :return: value, w
     """
     num_context = len(f)
@@ -147,7 +167,11 @@ def adversarial_expectation(f: TensorType,
         raise Exception("Incorrect divergence given")
 
     prob = cp.Problem(objective, constraints)
-    expectation = prob.solve()
+
+    if cvx_opt_max_iters is None:
+        expectation = prob.solve(solver=cvx_solver, verbose=cvx_opt_verbose)
+    else:
+        expectation = prob.solve(solver=cvx_solver, max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
     return expectation, w.value
 
 
@@ -160,7 +184,9 @@ def get_robust_expectation_and_action(action_points: TensorType,
                                       epsilon: float,
                                       obj_func: Callable = None,
                                       model: ModelOptModule = None,
-                                      beta: float = None
+                                      beta: float = None,
+                                      cvx_opt_max_iters: int = 100,
+                                      cvx_opt_verbose: bool = False
                                       ):
     """
     Calculates max_x inf_Q E_{c~Q}[f(x, c)]
@@ -174,6 +200,8 @@ def get_robust_expectation_and_action(action_points: TensorType,
     :param obj_func: objective function
     :param model: ModelOptModule
     :param beta: Beta for UCB scores. Only used if fvals_source is 'ucb'
+    :param cvx_opt_max_iters:
+    :param cvx_opt_verbose:
     :return: tuple (float, array of shape (1, d_x)). Value of robust action, and robust action
     """
     num_actions = len(action_points)
@@ -184,7 +212,7 @@ def get_robust_expectation_and_action(action_points: TensorType,
     for i in range(num_actions):
         action_contexts = get_action_contexts(i, domain, num_context_points)
         if divergence == 'MMD' or divergence == 'MMD_approx':
-            M = kernel(action_contexts)
+            M = kernel(context_points)
         else:
             M = None
         if fvals_source == 'obj_func':
@@ -197,7 +225,9 @@ def get_robust_expectation_and_action(action_points: TensorType,
                                                  M=M,
                                                  w_t=ref_dist,
                                                  epsilon=epsilon,
-                                                 divergence=divergence)
+                                                 divergence=divergence,
+                                                 cvx_opt_max_iters=cvx_opt_max_iters,
+                                                 cvx_opt_verbose=cvx_opt_verbose)
         expectations.append(expectation)
     max_idx = np.argmax(expectations)
     return np.max(expectations), action_points[max_idx:max_idx + 1]

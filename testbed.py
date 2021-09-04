@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from core.models import GPRModule
 from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
-from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist_1d, get_discrete_uniform_dist_1d, \
+from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist_1d, get_discrete_uniform_dist, \
     get_margin, adversarial_expectation, cholesky_inverse, MMD, TV, modified_chi_squared, worst_case_sens, \
     get_cubic_approx_func, get_mid_approx_func
 from metrics.plotting import plot_function_2d
@@ -66,7 +66,7 @@ model = GPRModule(dims=dims,
 # Distribution generating functions
 ref_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)
 # true_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, true_mean, true_var)
-true_dist_func = lambda x: get_discrete_uniform_dist_1d(context_points)
+true_dist_func = lambda x: get_discrete_uniform_dist(context_points)
 margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
 margin_func = lambda x: margin  # Constant margin for now
 

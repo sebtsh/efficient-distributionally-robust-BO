@@ -11,7 +11,7 @@ from core.models import GPRModule
 from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
-from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist_1d, get_discrete_uniform_dist_1d, \
+from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist_1d, get_discrete_uniform_dist, \
     get_margin
 
 ex = Experiment("DRBO_timing")
@@ -97,7 +97,7 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
                 # Distribution generating functions
                 ref_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)
                 # true_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, true_mean, true_var)
-                true_dist_func = lambda x: get_discrete_uniform_dist_1d(context_points)
+                true_dist_func = lambda x: get_discrete_uniform_dist(context_points)
                 margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
                 margin_func = lambda x: margin  # Constant margin for now
                 print("Using margin = {}".format(margin))

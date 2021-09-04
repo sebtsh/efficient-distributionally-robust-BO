@@ -11,7 +11,7 @@ from core.models import GPRModule
 from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
-from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist_1d, get_discrete_uniform_dist_1d, \
+from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist, get_discrete_uniform_dist, \
     get_margin, get_robust_expectation_and_action
 from metrics.plotting import plot_function_2d, plot_bo_points_2d, plot_robust_regret, plot_gp_2d
 
@@ -24,21 +24,24 @@ def rand_func():
     acq_name = 'GP-UCB'
     obj_func_name = 'rand_func'
     divergence = 'MMD'  # 'MMD', 'TV' or 'modified_chi_squared'' or 'modified_chi_squared'
-    dims = 2
-    lowers = [0] * dims
-    uppers = [1] * dims
+    action_dims = 1
+    context_dims = 1
+    action_lowers = [0] * action_dims
+    action_uppers = [1] * action_dims
+    context_lowers = [0] * context_dims
+    context_uppers = [1] * context_dims
     grid_density_per_dim = 20
     rand_func_num_points = 100
     ls = 0.1
     obs_variance = 0.001
     is_optimizing_gp = False
     opt_max_iter = 10
-    num_bo_iters = 200
+    num_bo_iters = 10
     num_init_points = 10
     beta_const = 2
     beta_schedule = 'constant'  # 'constant' or 'linear'
     ref_mean = 0.5
-    ref_var = 0.05
+    ref_var = 0.1
     true_mean = 0.2
     true_var = 0.05
     seed = 4
@@ -46,32 +49,44 @@ def rand_func():
 
 
 @ex.automain
-def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_dim, rand_func_num_points,
-         dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_const,
-         beta_schedule, ref_mean, ref_var, true_mean, true_var, seed, show_plots):
+def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, context_lowers, context_uppers,
+         grid_density_per_dim, rand_func_num_points, action_dims, context_dims, ls, obs_variance, is_optimizing_gp,
+         num_bo_iters, opt_max_iter, num_init_points, beta_const, beta_schedule, ref_mean, ref_var, true_mean, true_var,
+         seed, show_plots):
     np.random.seed(seed)
-    lengthscales = np.array([ls] * dims)
+    all_dims = action_dims + context_dims
+    all_lowers = action_lowers + context_lowers
+    all_uppers = action_uppers + context_uppers
+    lengthscales = np.array([ls] * all_dims)
+    context_lengthscales = np.array([ls] * context_dims)
 
     f_kernel = gpf.kernels.SquaredExponential(lengthscales=lengthscales)
     if divergence == 'MMD' or divergence == 'MMD_approx':
-        mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=np.array([ls]))  # 1d for now
+        mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=context_lengthscales)
     else:
         mmd_kernel = None
 
     # Get objective function
-    obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, rand_func_num_points, seed)
+    obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, rand_func_num_points, seed)
 
-    # Action space (1d for now)
-    action_points = construct_grid_1d(lowers[0], uppers[0], grid_density_per_dim)
-    # Context space (1d for now)
-    context_points = construct_grid_1d(lowers[1], uppers[1], grid_density_per_dim)
+    # Action space
+    action_points = construct_grid_1d(action_lowers[0], action_uppers[0], grid_density_per_dim)
+    for i in range(action_dims - 1):
+        action_points = cross_product(action_points, construct_grid_1d(action_lowers[i+1], action_uppers[i+1],
+                                                                       grid_density_per_dim))
+
+    # Context space
+    context_points = construct_grid_1d(context_lowers[0], context_uppers[0], grid_density_per_dim)
+    for i in range(context_dims - 1):
+        context_points = cross_product(context_points, construct_grid_1d(context_lowers[i+1], context_uppers[i+1],
+                                                                         grid_density_per_dim))
     search_points = cross_product(action_points, context_points)
 
     observer = mk_noisy_observer(obj_func, obs_variance)
     init_dataset = observer(search_points[np.random.randint(0, len(search_points), num_init_points)])
 
     # Model
-    model = GPRModule(dims=dims,
+    model = GPRModule(dims=all_dims,
                       kernel=f_kernel,
                       noise_variance=obs_variance,
                       dataset=init_dataset,
@@ -91,9 +106,10 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
                                   divergence=divergence)
 
     # Distribution generating functions
-    ref_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)
-    # true_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, true_mean, true_var)
-    true_dist_func = lambda x: get_discrete_uniform_dist_1d(context_points)
+    ref_mean_arr = ref_mean * np.ones(context_dims)
+    ref_cov = np.eye(context_dims) * ref_var
+    ref_dist_func = lambda x: get_discrete_normal_dist(context_points, ref_mean_arr, ref_cov)
+    true_dist_func = lambda x: get_discrete_uniform_dist(context_points)
     margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
     margin_func = lambda x: margin  # Constant margin for now
     print("Using margin = {}".format(margin))
@@ -115,6 +131,7 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
     print("Final dataset: {}".format(final_dataset))
     print("Average acquisition time in seconds: {}".format(average_acq_time))
     # Plots
+    Path("runs/plots").mkdir(parents=True, exist_ok=True)
     query_points = final_dataset.query_points.numpy()
     maximizer = search_points[[np.argmax(obj_func(search_points))]]
     title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}".format(beta_const) \
@@ -126,14 +143,14 @@ def main(acq_name, obj_func_name, divergence, lowers, uppers, grid_density_per_d
                                                             beta_const,
                                                             beta_schedule,
                                                             ref_mean)
-    if dims == 2:
-        Path("runs/plots").mkdir(parents=True, exist_ok=True)
-        fig, ax = plot_function_2d(obj_func, lowers, uppers, grid_density_per_dim, contour=True,
+
+    if all_dims == 2:
+        fig, ax = plot_function_2d(obj_func, all_lowers, all_uppers, grid_density_per_dim, contour=True,
                                    title=title, colorbar=True)
         plot_bo_points_2d(query_points, ax, num_init=num_init_points, maximizer=maximizer)
         fig.savefig("runs/plots/" + file_name + "-obj_func.png")
 
-        fig, ax = plot_gp_2d(model.gp, mins=lowers, maxs=uppers, grid_density=grid_density_per_dim,
+        fig, ax = plot_gp_2d(model.gp, mins=all_lowers, maxs=all_uppers, grid_density=grid_density_per_dim,
                              save_location="runs/plots/" + file_name + "-gp.png")
 
     print("Calculating robust expectation")

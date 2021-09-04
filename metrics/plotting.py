@@ -473,6 +473,7 @@ def plot_robust_regret(obj_func,
                        verbose=False,
                        figsize=None,
                        dpi=None):
+    action_dims = action_points.shape[-1]
     fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
     regrets = []
     cumulative_regrets = []
@@ -482,7 +483,7 @@ def plot_robust_regret(obj_func,
     else:
         M = None
     for t in trange(len(query_points)):
-        domain = cross_product(query_points[t:t + 1, 0:1], context_points)
+        domain = cross_product(query_points[t:t + 1, 0:action_dims], context_points)
         f = obj_func(domain)
         query_expectation, w = adversarial_expectation(f=f, M=M, w_t=ref_dist_func(t), epsilon=margin_func(t),
                                                        divergence=divergence)
