@@ -188,7 +188,8 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
     plt.xlabel("Timing")
     plt.ylabel("Regret")
     plt.legend()
-    plt.show()
+    if show_plots:
+        plt.show()
     fig.savefig("runs/plots/" + file_name + ".png")
     pickle.dump((true_adv_exps, wcs_adv_approxs, wcs_timings, all_truncated_exps, all_truncated_timings),
                 open("runs/" + file_name + ".p", "wb"))
