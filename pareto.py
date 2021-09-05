@@ -24,7 +24,7 @@ def rand_func():
     obj_func_name = 'rand_func'
     divergence = 'MMD_approx'  # 'MMD', 'TV' or 'modified_chi_squared'' or 'modified_chi_squared'
     action_dims = 1
-    context_dims = 1
+    context_dims = 2
     action_lowers = [0] * action_dims
     action_uppers = [1] * action_dims
     context_lowers = [0] * context_dims
@@ -44,18 +44,16 @@ def rand_func():
     true_mean = 0.2
     true_var = 0.05
     seed = 4
-    show_plots = True
-    cvx_opt_max_iters = 5000
-    cvx_opt_verbose = False
-    num_scs_max_iters = 8
-    scs_max_iter_block = 100
+    show_plots = False
+    num_scs_max_iters = 10
+    scs_max_iter_block = 1
 
 
 @ex.automain
 def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, context_lowers, context_uppers,
          grid_density_per_dim, rand_func_num_points, action_dims, context_dims, ls, obs_variance, is_optimizing_gp,
          num_bo_iters, opt_max_iter, num_init_points, beta_const, beta_schedule, ref_mean, ref_var, true_mean, true_var,
-         seed, show_plots, cvx_opt_max_iters, cvx_opt_verbose, num_scs_max_iters, scs_max_iter_block):
+         seed, show_plots, num_scs_max_iters, scs_max_iter_block):
     np.random.seed(seed)
     all_dims = action_dims + context_dims
     all_lowers = action_lowers + context_lowers
@@ -157,6 +155,7 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
         all_truncated_exps.append(truncated_exps)
         all_truncated_timings.append(truncated_timings)
 
+    true_adv_exps = np.array(true_adv_exps)
     best_action = np.argmax(true_adv_exps)
     best_expectation = np.max(true_adv_exps)
 
@@ -170,7 +169,9 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
     mean_wcs_timing = np.mean(wcs_timings)
     print("Worst case sensitivity timing: {}".format(mean_wcs_timing))
 
-    truncated_regret =best_expectation - np.max(np.array(all_truncated_exps), axis=0)
+    truncated_actions = np.argmax(np.array(all_truncated_exps), axis=0)
+    truncated_expectation = true_adv_exps[truncated_actions]
+    truncated_regret =best_expectation - truncated_expectation
     print("Truncated regret: {}".format(truncated_regret))
     mean_truncated_timings = np.mean(all_truncated_timings, axis=0)
     print("Average timings: {}".format(mean_truncated_timings))
