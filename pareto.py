@@ -6,7 +6,6 @@ from pathlib import Path
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 
-
 from core.objectives import get_obj_func
 
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist, get_discrete_uniform_dist, \
@@ -171,16 +170,17 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
 
     truncated_actions = np.argmax(np.array(all_truncated_exps), axis=0)
     truncated_expectation = true_adv_exps[truncated_actions]
-    truncated_regret =best_expectation - truncated_expectation
+    truncated_regret = best_expectation - truncated_expectation
     print("Truncated regret: {}".format(truncated_regret))
     mean_truncated_timings = np.mean(all_truncated_timings, axis=0)
     print("Average timings: {}".format(mean_truncated_timings))
 
     Path("runs/plots").mkdir(parents=True, exist_ok=True)
-    file_name = "pareto-{}-{}-seed{}-refmean{}".format(obj_func_name,
-                                                       divergence,
-                                                       seed,
-                                                       ref_mean)
+    file_name = "pareto-{}-{}-seed{}-refmean{}-{}maxiterblock".format(obj_func_name,
+                                                                      divergence,
+                                                                      seed,
+                                                                      ref_mean,
+                                                                      scs_max_iter_block)
     fig = plt.figure()
     plt.scatter(mean_truncated_timings, truncated_regret, label='Truncated convex opt.')
     plt.scatter([mean_wcs_timing], [best_expectation - wcs_expectation], label='Worst case sens.')
