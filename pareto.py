@@ -23,7 +23,7 @@ def rand_func():
     obj_func_name = 'rand_func'
     divergence = 'MMD_approx'  # 'MMD', 'TV' or 'modified_chi_squared'' or 'modified_chi_squared'
     action_dims = 1
-    context_dims = 2
+    context_dims = 1
     action_lowers = [0] * action_dims
     action_uppers = [1] * action_dims
     context_lowers = [0] * context_dims
@@ -181,7 +181,7 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
                                                                       seed,
                                                                       ref_mean,
                                                                       scs_max_iter_block)
-    fig = plt.figure()
+
     plt.scatter(mean_truncated_timings, truncated_regret, label='Truncated convex opt.')
     plt.scatter([mean_wcs_timing], [best_expectation - wcs_expectation], label='Worst case sens.')
 
@@ -190,6 +190,7 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
     plt.legend()
     if show_plots:
         plt.show()
+    fig = plt.gcf()
     fig.savefig("runs/plots/" + file_name + ".png")
     pickle.dump((true_adv_exps, wcs_adv_approxs, wcs_timings, all_truncated_exps, all_truncated_timings),
                 open("runs/" + file_name + ".p", "wb"))
