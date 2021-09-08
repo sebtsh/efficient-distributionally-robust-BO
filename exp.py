@@ -30,29 +30,28 @@ def rand_func():
     action_uppers = [1] * action_dims
     context_lowers = [0] * context_dims
     context_uppers = [1] * context_dims
-    grid_density_per_dim = 20
+    action_density_per_dim = 20
+    context_density_per_dim = 20
     rand_func_num_points = 100
     ls = 0.1
     obs_variance = 0.001
     is_optimizing_gp = False
     opt_max_iter = 10
-    num_bo_iters = 10
+    num_bo_iters = 200
     num_init_points = 10
     beta_const = 2
     beta_schedule = 'constant'  # 'constant' or 'linear'
     ref_mean = 0.5
     ref_var = 0.1
-    true_mean = 0.2
-    true_var = 0.05
     seed = 4
     show_plots = True
 
 
 @ex.automain
 def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, context_lowers, context_uppers,
-         grid_density_per_dim, rand_func_num_points, action_dims, context_dims, ls, obs_variance, is_optimizing_gp,
-         num_bo_iters, opt_max_iter, num_init_points, beta_const, beta_schedule, ref_mean, ref_var, true_mean, true_var,
-         seed, show_plots):
+         action_density_per_dim, context_density_per_dim, rand_func_num_points, action_dims, context_dims, ls,
+         obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_const, beta_schedule,
+         ref_mean, ref_var, seed, show_plots):
     np.random.seed(seed)
     all_dims = action_dims + context_dims
     all_lowers = action_lowers + context_lowers
@@ -70,16 +69,16 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
     obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, rand_func_num_points, seed)
 
     # Action space
-    action_points = construct_grid_1d(action_lowers[0], action_uppers[0], grid_density_per_dim)
+    action_points = construct_grid_1d(action_lowers[0], action_uppers[0], action_density_per_dim)
     for i in range(action_dims - 1):
         action_points = cross_product(action_points, construct_grid_1d(action_lowers[i+1], action_uppers[i+1],
-                                                                       grid_density_per_dim))
+                                                                       action_density_per_dim))
 
     # Context space
-    context_points = construct_grid_1d(context_lowers[0], context_uppers[0], grid_density_per_dim)
+    context_points = construct_grid_1d(context_lowers[0], context_uppers[0], context_density_per_dim)
     for i in range(context_dims - 1):
         context_points = cross_product(context_points, construct_grid_1d(context_lowers[i+1], context_uppers[i+1],
-                                                                         grid_density_per_dim))
+                                                                         context_density_per_dim))
     search_points = cross_product(action_points, context_points)
 
     observer = mk_noisy_observer(obj_func, obs_variance)
@@ -145,12 +144,14 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
                                                             ref_mean)
 
     if all_dims == 2:
-        fig, ax = plot_function_2d(obj_func, all_lowers, all_uppers, grid_density_per_dim, contour=True,
+        fig, ax = plot_function_2d(obj_func, all_lowers, all_uppers,
+                                   np.max([action_density_per_dim, context_density_per_dim]), contour=True,
                                    title=title, colorbar=True)
         plot_bo_points_2d(query_points, ax, num_init=num_init_points, maximizer=maximizer)
         fig.savefig("runs/plots/" + file_name + "-obj_func.png")
 
-        fig, ax = plot_gp_2d(model.gp, mins=all_lowers, maxs=all_uppers, grid_density=grid_density_per_dim,
+        fig, ax = plot_gp_2d(model.gp, mins=all_lowers, maxs=all_uppers,
+                             grid_density=np.max([action_density_per_dim, context_density_per_dim]),
                              save_location="runs/plots/" + file_name + "-gp.png")
 
     print("Calculating robust expectation")
