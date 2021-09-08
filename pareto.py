@@ -28,7 +28,8 @@ def rand_func():
     action_uppers = [1] * action_dims
     context_lowers = [0] * context_dims
     context_uppers = [1] * context_dims
-    grid_density_per_dim = 20
+    action_density_per_dim = 20
+    context_density_per_dim = 1000
     rand_func_num_points = 100
     ls = 0.1
     obs_variance = 0.001
@@ -43,14 +44,14 @@ def rand_func():
     true_mean = 0.2
     true_var = 0.05
     seed = 4
-    show_plots = False
+    show_plots = True
     num_scs_max_iters = 10
     scs_max_iter_block = 1
 
 
 @ex.automain
 def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, context_lowers, context_uppers,
-         grid_density_per_dim, rand_func_num_points, action_dims, context_dims, ls, obs_variance, is_optimizing_gp,
+         action_density_per_dim, context_density_per_dim, rand_func_num_points, action_dims, context_dims, ls, obs_variance, is_optimizing_gp,
          num_bo_iters, opt_max_iter, num_init_points, beta_const, beta_schedule, ref_mean, ref_var, true_mean, true_var,
          seed, show_plots, num_scs_max_iters, scs_max_iter_block):
     np.random.seed(seed)
@@ -70,16 +71,16 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
     obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, rand_func_num_points, seed)
 
     # Action space
-    action_points = construct_grid_1d(action_lowers[0], action_uppers[0], grid_density_per_dim)
+    action_points = construct_grid_1d(action_lowers[0], action_uppers[0], action_density_per_dim)
     for i in range(action_dims - 1):
         action_points = cross_product(action_points, construct_grid_1d(action_lowers[i + 1], action_uppers[i + 1],
-                                                                       grid_density_per_dim))
+                                                                       action_density_per_dim))
 
     # Context space
-    context_points = construct_grid_1d(context_lowers[0], context_uppers[0], grid_density_per_dim)
+    context_points = construct_grid_1d(context_lowers[0], context_uppers[0], context_density_per_dim)
     for i in range(context_dims - 1):
         context_points = cross_product(context_points, construct_grid_1d(context_lowers[i + 1], context_uppers[i + 1],
-                                                                         grid_density_per_dim))
+                                                                         context_density_per_dim))
 
     # Distribution generating functions
     ref_mean_arr = ref_mean * np.ones(context_dims)
@@ -176,12 +177,12 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
     print("Average timings: {}".format(mean_truncated_timings))
 
     Path("runs/plots").mkdir(parents=True, exist_ok=True)
-    file_name = "pareto-{}-{}-seed{}-refmean{}-maxiterblock{}-density{}".format(obj_func_name,
+    file_name = "pareto-{}-{}-seed{}-refmean{}-maxiterblock{}-cdensity{}".format(obj_func_name,
                                                                                 divergence,
                                                                                 seed,
                                                                                 ref_mean,
                                                                                 scs_max_iter_block,
-                                                                                grid_density_per_dim)
+                                                                                context_density_per_dim)
 
     plt.scatter(mean_truncated_timings, truncated_regret, label='Truncated convex opt.')
     plt.scatter([mean_wcs_timing], [best_expectation - wcs_expectation], label='Worst case sens.')
