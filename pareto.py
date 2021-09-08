@@ -176,11 +176,12 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
     print("Average timings: {}".format(mean_truncated_timings))
 
     Path("runs/plots").mkdir(parents=True, exist_ok=True)
-    file_name = "pareto-{}-{}-seed{}-refmean{}-{}maxiterblock".format(obj_func_name,
-                                                                      divergence,
-                                                                      seed,
-                                                                      ref_mean,
-                                                                      scs_max_iter_block)
+    file_name = "pareto-{}-{}-seed{}-refmean{}-maxiterblock{}-density{}".format(obj_func_name,
+                                                                                divergence,
+                                                                                seed,
+                                                                                ref_mean,
+                                                                                scs_max_iter_block,
+                                                                                grid_density_per_dim)
 
     plt.scatter(mean_truncated_timings, truncated_regret, label='Truncated convex opt.')
     plt.scatter([mean_wcs_timing], [best_expectation - wcs_expectation], label='Worst case sens.')
