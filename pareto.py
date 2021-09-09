@@ -1,4 +1,5 @@
 import gpflow as gpf
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
@@ -12,6 +13,8 @@ from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dis
     get_margin, adversarial_expectation, get_mid_approx_func, worst_case_sens, get_action_contexts
 from tqdm import trange
 from timeit import default_timer as timer
+
+matplotlib.use('Agg')
 
 ex = Experiment("Pareto")
 ex.observers.append(FileStorageObserver('runs'))
@@ -28,8 +31,8 @@ def rand_func():
     action_uppers = [1] * action_dims
     context_lowers = [0] * context_dims
     context_uppers = [1] * context_dims
-    action_density_per_dim = 20
-    context_density_per_dim = 1000
+    action_density_per_dim = 3
+    context_density_per_dim = 5
     rand_func_num_points = 100
     ls = 0.1
     obs_variance = 0.001
@@ -44,7 +47,7 @@ def rand_func():
     true_mean = 0.2
     true_var = 0.05
     seed = 4
-    show_plots = True
+    show_plots = False
     num_scs_max_iters = 10
     scs_max_iter_block = 1
 
