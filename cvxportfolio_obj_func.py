@@ -18,7 +18,7 @@ def extract_results(result):
 
 
 quandl.ApiConfig.api_key = 'XB2H55DxdNiJjBbLvCzu'
-Path("cvxportfolio").mkdir(parents=True, exist_ok=True)
+Path("data/portfolio").mkdir(parents=True, exist_ok=True)
 tickers = ['AMZN', 'GOOGL', 'TSLA', 'NKE']
 start_date = '2012-01-01'
 end_date = '2016-12-31'
@@ -74,7 +74,7 @@ for i in trange(num_samples):
     all_results.append(extracted_results)
 
     if (i+1) % 100 == 0:
-        pickle.dump(np.array(all_results), open("cvxportfolio/partial_results_{}.p".format(i), "wb"))
+        pickle.dump(np.array(all_results), open("data/portfolio/partial_results_{}.p".format(i), "wb"))
 
 print("All simulations completed successfully")
-pickle.dump(np.array(all_results), open("cvxportfolio/all_results.p", "wb"))
+pickle.dump(np.array(all_results), open("data/portfolio/all_results.p", "wb"))
