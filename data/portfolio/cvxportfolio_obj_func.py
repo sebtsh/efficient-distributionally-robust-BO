@@ -18,7 +18,7 @@ def extract_results(result):
 
 
 quandl.ApiConfig.api_key = 'XB2H55DxdNiJjBbLvCzu'
-Path("data/portfolio").mkdir(parents=True, exist_ok=True)
+Path("").mkdir(parents=True, exist_ok=True)
 tickers = ['AMZN', 'GOOGL', 'TSLA', 'NKE']
 start_date = '2012-01-01'
 end_date = '2016-12-31'

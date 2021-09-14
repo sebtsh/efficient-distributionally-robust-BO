@@ -2,9 +2,13 @@ import gpflow as gpf
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+import sys
 from pathlib import Path
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
+
+sys.path.append(sys.path[0][:-len('experiments')])  # for imports to work
+print(sys.path)
 
 from core.acquisitions import get_acquisition, get_beta_linear_schedule
 from core.models import GPRModule
@@ -16,7 +20,7 @@ from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dis
 from metrics.plotting import plot_function_2d, plot_bo_points_2d, plot_robust_regret, plot_gp_2d
 
 ex = Experiment("DRBO")
-ex.observers.append(FileStorageObserver('runs'))
+ex.observers.append(FileStorageObserver('../runs'))
 
 
 @ex.named_config
@@ -130,7 +134,7 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
     print("Final dataset: {}".format(final_dataset))
     print("Average acquisition time in seconds: {}".format(average_acq_time))
     # Plots
-    Path("runs/plots").mkdir(parents=True, exist_ok=True)
+    Path("../runs/plots").mkdir(parents=True, exist_ok=True)
     query_points = final_dataset.query_points.numpy()
     maximizer = search_points[[np.argmax(obj_func(search_points))]]
     title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}".format(beta_const) \

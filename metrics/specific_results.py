@@ -6,7 +6,7 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 
 ex = Experiment("DRBO_results")
-ex.observers.append(FileStorageObserver('runs'))
+ex.observers.append(FileStorageObserver('../runs'))
 
 
 @ex.named_config

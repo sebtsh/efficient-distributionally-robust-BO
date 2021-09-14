@@ -4,9 +4,13 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+import sys
 from pathlib import Path
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
+
+sys.path.append(sys.path[0][:-len('experiments')])  # for imports to work
+print(sys.path)
 
 from core.acquisitions import get_acquisition, get_beta_linear_schedule
 from core.models import GPRModule
@@ -20,7 +24,7 @@ from metrics.plotting import plot_function_2d, plot_bo_points_2d, plot_robust_re
 matplotlib.use('Agg')
 
 ex = Experiment("DRBO")
-ex.observers.append(FileStorageObserver('runs'))
+ex.observers.append(FileStorageObserver('../runs'))
 
 
 @ex.named_config
@@ -150,7 +154,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                         beta_const, beta_schedule)
 
                     if dims == 2:
-                        Path("runs/plots").mkdir(parents=True, exist_ok=True)
+                        Path("../runs/plots").mkdir(parents=True, exist_ok=True)
                         fig, ax = plot_function_2d(obj_func, lowers, uppers, grid_density_per_dim, contour=True,
                                                    title=title, colorbar=True)
                         plot_bo_points_2d(query_points, ax, num_init=num_init_points, maximizer=maximizer)

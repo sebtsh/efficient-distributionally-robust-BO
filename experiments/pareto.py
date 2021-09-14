@@ -3,12 +3,15 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+import sys
 from pathlib import Path
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 
-from core.objectives import get_obj_func
+sys.path.append(sys.path[0][:-len('experiments')])  # for imports to work
+print(sys.path)
 
+from core.objectives import get_obj_func
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist, get_discrete_uniform_dist, \
     get_margin, adversarial_expectation, get_mid_approx_func, worst_case_sens, get_action_contexts
 from tqdm import trange
@@ -17,7 +20,7 @@ from timeit import default_timer as timer
 matplotlib.use('Agg')
 
 ex = Experiment("Pareto")
-ex.observers.append(FileStorageObserver('runs'))
+ex.observers.append(FileStorageObserver('../runs'))
 
 
 @ex.named_config
@@ -179,7 +182,7 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
     mean_truncated_timings = np.mean(all_truncated_timings, axis=0)
     print("Average timings: {}".format(mean_truncated_timings))
 
-    Path("runs/plots").mkdir(parents=True, exist_ok=True)
+    Path("../runs/plots").mkdir(parents=True, exist_ok=True)
     file_name = "pareto-{}-{}-seed{}-refmean{}-maxiterblock{}-cdensity{}".format(obj_func_name,
                                                                                 divergence,
                                                                                 seed,
