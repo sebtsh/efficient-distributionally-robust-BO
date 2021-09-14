@@ -17,6 +17,7 @@ def extract_results(result):
     return [portfolio_return, excess_return, excess_risk, sharpe_ratio, max_drawdown]
 
 
+quandl.ApiConfig.api_key = 'XB2H55DxdNiJjBbLvCzu'
 Path("cvxportfolio").mkdir(parents=True, exist_ok=True)
 tickers = ['AMZN', 'GOOGL', 'TSLA', 'NKE']
 start_date = '2012-01-01'
@@ -33,13 +34,13 @@ Sigma_hat = returns.rolling(window=250, min_periods=250, closed='neither').cov()
 risk_model = cp.FullSigma(Sigma_hat)
 leverage_limit = cp.LeverageLimit(3)
 
-num_samples = 3000
+num_samples = 2048
 
 # Generate Sobol sequence
-sampler = qmc.Sobol(d=5, scramble=False)
+sampler = qmc.Sobol(d=4, scramble=False)
 sample = sampler.random(num_samples)
-lowers = [0.1, 5.5, 0.1, 1e-04, 1e-04]
-uppers = [1000, 8, 100, 1e-02, 1e-03]
+lowers = [5.5, 0.1, 1e-04, 1e-04]
+uppers = [8, 100, 1e-02, 1e-03]
 scaled_samples = qmc.scale(sample, lowers, uppers)
 pickle.dump(scaled_samples, open("cvxportfolio/scaled_samples.p", "wb"))
 
@@ -47,11 +48,11 @@ all_results = []
 for i in trange(num_samples):
     # Dimensions are [risk_aversion, trade_aversion, holding_cost, bid_ask_spread, borrow_cost]
     params = scaled_samples[i]
-    risk_aversion = params[0]
-    trade_aversion = params[1]
-    holding_cost = params[2]
-    bid_ask_spread = params[3]
-    borrow_cost = params[4]
+    risk_aversion = 1  # fixed
+    trade_aversion = params[0]
+    holding_cost = params[1]
+    bid_ask_spread = params[2]
+    borrow_cost = params[3]
 
     # Context parameters go here
     tcost_model = cp.TcostModel(half_spread=0.5 * bid_ask_spread)
