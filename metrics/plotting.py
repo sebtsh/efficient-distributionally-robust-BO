@@ -516,6 +516,18 @@ def plot_robust_regret(obj_func,
     return fig, ax, regrets, cumulative_regrets
 
 
+def plot_cumulative_rewards(cumulative_rewards,
+                            title="",
+                            figsize=None,
+                            dpi=None):
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+    ax.plot(np.arange(0, len(cumulative_rewards)), cumulative_rewards, marker='x')
+    ax.set_ylabel("Cumulative rewards")
+    ax.set_xlabel("Time")
+    ax.set_title(title)
+    return fig
+
+
 def plot_gp_1d(model,
                min_range,
                max_range,

@@ -75,13 +75,13 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
     # Action space
     action_points = construct_grid_1d(action_lowers[0], action_uppers[0], action_density_per_dim)
     for i in range(action_dims - 1):
-        action_points = cross_product(action_points, construct_grid_1d(action_lowers[i+1], action_uppers[i+1],
+        action_points = cross_product(action_points, construct_grid_1d(action_lowers[i + 1], action_uppers[i + 1],
                                                                        action_density_per_dim))
 
     # Context space
     context_points = construct_grid_1d(context_lowers[0], context_uppers[0], context_density_per_dim)
     for i in range(context_dims - 1):
-        context_points = cross_product(context_points, construct_grid_1d(context_lowers[i+1], context_uppers[i+1],
+        context_points = cross_product(context_points, construct_grid_1d(context_lowers[i + 1], context_uppers[i + 1],
                                                                          context_density_per_dim))
     search_points = cross_product(action_points, context_points)
 
@@ -134,7 +134,7 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
     print("Final dataset: {}".format(final_dataset))
     print("Average acquisition time in seconds: {}".format(average_acq_time))
     # Plots
-    Path("../runs/plots").mkdir(parents=True, exist_ok=True)
+    Path("runs/plots").mkdir(parents=True, exist_ok=True)
     query_points = final_dataset.query_points.numpy()
     maximizer = search_points[[np.argmax(obj_func(search_points))]]
     title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}".format(beta_const) \

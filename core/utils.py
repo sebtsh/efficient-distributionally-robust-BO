@@ -464,3 +464,29 @@ def get_action_contexts(action, domain, num_context_points):
     :return: array of shape (n, d_x + d_y)
     """
     return domain[action * num_context_points:(action + 1) * num_context_points, :]
+
+
+def discretize_1d(cont_values, context_points):
+    """
+    :param cont_values: array of shape (n)
+    :param context_points: array of shape (m, 1)
+    :return: array of shape (n)
+    """
+    return np.squeeze(context_points[np.argmin(abs(context_points - cont_values), axis=0)])
+
+
+def get_discrete_dist_1d(arr, context_points):
+    """
+
+    :param arr: array of shape (n). Discretized to context_points
+    :param context_points: array of shape (m, 1)
+    :return: array of shape (m). Discrete probability distribution
+    """
+    unique, counts = np.unique(arr, return_counts=True)
+    dic = dict(zip(unique, counts))
+    dist = np.zeros(len(context_points))
+    for i in range(len(context_points)):
+        ctx = context_points[i][0]
+        if ctx in dic.keys():
+            dist[i] = dic[ctx]
+    return dist / len(arr)

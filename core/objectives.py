@@ -54,6 +54,8 @@ def get_obj_func(name, lowers, uppers, kernel, rand_func_num_points=100, seed=0)
         return neg_branin
     elif name == 'rand_func':
         return sample_GP_prior(kernel, lowers, uppers, rand_func_num_points, seed)
+    elif name == 'wind':
+        return wind_cost
 
 
 def sample_GP_prior(kernel, lowers, uppers, num_points, seed=0, jitter=1e-03):
@@ -76,3 +78,21 @@ def sample_GP_prior(kernel, lowers, uppers, num_points, seed=0, jitter=1e-03):
     L_inv = np.linalg.inv(np.linalg.cholesky(cov))
     K_inv_f = L_inv.T @ L_inv @ f_vals
     return lambda x: kernel(x, points) @ K_inv_f
+
+
+def wind_cost(action_contexts):
+    """
+    :param action_contexts: array of shape (n, 2)
+    :return: tensor of shape (n, 1)
+    """
+    n, _ = action_contexts.shape
+
+    c_minus_x = action_contexts[:, 1:] - action_contexts[:, 0:1]
+    max_c_minus_x = np.max(np.concatenate([c_minus_x, np.zeros((n, 1))], axis=1), axis=1)[:, None]
+
+    min_x_c = np.min(action_contexts, axis=1)[:, None]
+
+    x_minus_c = action_contexts[:, 0:1] - action_contexts[:, 1:]
+    max_x_minus_c = np.max(np.concatenate([x_minus_c, np.zeros((n, 1))], axis=1), axis=1)[:, None]
+
+    return 0.1 * max_c_minus_x + min_x_c - 5 * max_x_minus_c

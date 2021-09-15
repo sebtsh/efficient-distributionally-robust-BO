@@ -43,8 +43,6 @@ def rand_func():
     num_init_points = 10
     beta_schedule = 'constant'  # 'constant' or 'linear'
     ref_var = 0.05
-    true_mean = 0.2
-    true_var = 0.05
     seed = 0
     show_plots = False
 
@@ -52,7 +50,10 @@ def rand_func():
 @ex.automain
 def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_points,
          dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_schedule,
-         ref_var, true_mean, true_var, seed, show_plots):
+         ref_var, seed, show_plots):
+    Path("runs/plots").mkdir(parents=True, exist_ok=True)
+    Path("runs/indiv_results").mkdir(parents=True, exist_ok=True)
+
     divergences = ['MMD_approx']
     ref_means = [0, 0.25, 0.5]
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox', 'DRBOMidApprox']
@@ -80,7 +81,6 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
 
             # Distribution generating functions
             ref_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)
-            # true_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, true_mean, true_var)
             true_dist_func = lambda x: get_discrete_uniform_dist(context_points)
             margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
             margin_func = lambda x: margin  # Constant margin for now
@@ -154,7 +154,6 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                         beta_const, beta_schedule)
 
                     if dims == 2:
-                        Path("../runs/plots").mkdir(parents=True, exist_ok=True)
                         fig, ax = plot_function_2d(obj_func, lowers, uppers, grid_density_per_dim, contour=True,
                                                    title=title, colorbar=True)
                         plot_bo_points_2d(query_points, ax, num_init=num_init_points, maximizer=maximizer)
@@ -180,7 +179,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                     plt.close(fig)
 
                     pickle.dump((regrets, cumulative_regrets, average_acq_time, query_points),
-                                open("runs/" + file_name + ".p", "wb"))
+                                open("runs/indiv_results" + file_name + ".p", "wb"))
 
                     if show_plots:
                         plt.show()
