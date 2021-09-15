@@ -25,41 +25,31 @@ ex.observers.append(FileStorageObserver('../runs'))
 
 @ex.named_config
 def rand_func():
-    acq_name = 'GP-UCB'
     obj_func_name = 'rand_func'
     divergence = 'MMD_approx'  # 'MMD', 'TV' or 'modified_chi_squared'' or 'modified_chi_squared'
     action_dims = 1
-    context_dims = 1
+    context_dims = 2
     action_lowers = [0] * action_dims
     action_uppers = [1] * action_dims
     context_lowers = [0] * context_dims
     context_uppers = [1] * context_dims
-    action_density_per_dim = 3
-    context_density_per_dim = 5
+    action_density_per_dim = 20
+    context_density_per_dim = 20
     rand_func_num_points = 100
     ls = 0.1
-    obs_variance = 0.001
-    is_optimizing_gp = False
-    opt_max_iter = 10
-    num_bo_iters = 10
-    num_init_points = 10
-    beta_const = 2
-    beta_schedule = 'constant'  # 'constant' or 'linear'
     ref_mean = 0.5
     ref_var = 0.1
-    true_mean = 0.2
-    true_var = 0.05
-    seed = 4
+    num_scs_max_iters = 20
+    scs_max_iter_block = 10
+    seed = 0
     show_plots = False
-    num_scs_max_iters = 10
-    scs_max_iter_block = 1
 
 
 @ex.automain
-def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, context_lowers, context_uppers,
-         action_density_per_dim, context_density_per_dim, rand_func_num_points, action_dims, context_dims, ls, obs_variance, is_optimizing_gp,
-         num_bo_iters, opt_max_iter, num_init_points, beta_const, beta_schedule, ref_mean, ref_var, true_mean, true_var,
-         seed, show_plots, num_scs_max_iters, scs_max_iter_block):
+def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers, context_uppers,
+         action_density_per_dim, context_density_per_dim, rand_func_num_points, action_dims, context_dims, ls, ref_mean,
+         ref_var, num_scs_max_iters, scs_max_iter_block, seed, show_plots):
+    Path("../runs/plots").mkdir(parents=True, exist_ok=True)
     np.random.seed(seed)
     all_dims = action_dims + context_dims
     all_lowers = action_lowers + context_lowers
@@ -139,8 +129,8 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
                                             ref_dist=ref_dist,
                                             worst_case_sensitivity=worst_case_sensitivity,
                                             divergence=divergence)
-        wcs_adv_approxs.append(V_approx_func(epsilon))
         end = timer()
+        wcs_adv_approxs.append(V_approx_func(epsilon))
         wcs_timings.append(end - start)
 
         # Truncated convex optimization
@@ -165,24 +155,31 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
     best_action = np.argmax(true_adv_exps)
     best_expectation = np.max(true_adv_exps)
 
-    print("Best action is {}, with adv. expectation = {}".format(best_action, best_expectation))
+    print("Adv. expectations = {}".format(true_adv_exps))
 
-    wcs_action = np.argmax(wcs_adv_approxs)
-    wcs_expectation = true_adv_exps[wcs_action]
+    # Get WCS approximation error, averaged across all actions
+    wcs_adv_approxs = np.squeeze(np.array(wcs_adv_approxs))
+    print("WCS adv. approximations = {}".format(wcs_adv_approxs))
 
-    print("Worst case sensitivity chose {}, with adv. expectation = {}".format(wcs_action,
-                                                                               wcs_expectation))
-    mean_wcs_timing = np.mean(wcs_timings)
-    print("Worst case sensitivity timing: {}".format(mean_wcs_timing))
+    wcs_approx_error = abs(true_adv_exps - wcs_adv_approxs)
+    print("WCS approximation errors = {}".format(wcs_approx_error))
+    wcs_average_error = np.mean(wcs_approx_error)
+    print("WCS average approximation error = {}".format(wcs_average_error))
 
-    truncated_actions = np.argmax(np.array(all_truncated_exps), axis=0)
-    truncated_expectation = true_adv_exps[truncated_actions]
-    truncated_regret = best_expectation - truncated_expectation
-    print("Truncated regret: {}".format(truncated_regret))
-    mean_truncated_timings = np.mean(all_truncated_timings, axis=0)
-    print("Average timings: {}".format(mean_truncated_timings))
+    wcs_average_timing = np.mean(wcs_timings)
+    print("WCS timing: {}".format(wcs_average_timing))
 
-    Path("../runs/plots").mkdir(parents=True, exist_ok=True)
+    # Get approximation error from early stopping convex optimization
+    all_truncated_exps = np.array(all_truncated_exps)
+    all_truncated_timings = np.array(all_truncated_timings)
+
+    truncated_error = abs(true_adv_exps[:, None] - all_truncated_exps)  # (num_actions, num_scs_max_iters)
+    truncated_average_error = np.mean(truncated_error, axis=0)
+    print("Truncated average approximation error = {}".format(truncated_average_error))
+
+    truncated_average_timings = np.mean(all_truncated_timings, axis=0)
+    print("Average timings: {}".format(truncated_average_timings))
+
     file_name = "pareto-{}-{}-seed{}-refmean{}-maxiterblock{}-cdensity{}".format(obj_func_name,
                                                                                 divergence,
                                                                                 seed,
@@ -190,11 +187,11 @@ def main(acq_name, obj_func_name, divergence, action_lowers, action_uppers, cont
                                                                                 scs_max_iter_block,
                                                                                 context_density_per_dim)
 
-    plt.scatter(mean_truncated_timings, truncated_regret, label='Truncated convex opt.')
-    plt.scatter([mean_wcs_timing], [best_expectation - wcs_expectation], label='Worst case sens.')
+    plt.scatter(truncated_average_timings, truncated_average_error, label='Truncated convex opt.')
+    plt.scatter([wcs_average_timing], [wcs_average_error], label='Worst case sens.')
 
     plt.xlabel("Timing")
-    plt.ylabel("Regret")
+    plt.ylabel("Approximation error")
     plt.legend()
     if show_plots:
         plt.show()
