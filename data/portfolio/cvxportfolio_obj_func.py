@@ -39,18 +39,18 @@ num_samples = 2048
 # Generate Sobol sequence
 sampler = qmc.Sobol(d=4, scramble=False)
 sample = sampler.random(num_samples)
-lowers = [5.5, 0.1, 1e-04, 1e-04]
-uppers = [8, 100, 1e-02, 1e-03]
+lowers = [0.1, 5.5, 1e-04, 1e-04]
+uppers = [10, 8, 1.5e-03, 1e-03]
 scaled_samples = qmc.scale(sample, lowers, uppers)
-pickle.dump(scaled_samples, open("cvxportfolio/scaled_samples.p", "wb"))
+pickle.dump(scaled_samples, open("data/portfolio/scaled_samples.p", "wb"))
 
 all_results = []
 for i in trange(num_samples):
     # Dimensions are [risk_aversion, trade_aversion, holding_cost, bid_ask_spread, borrow_cost]
     params = scaled_samples[i]
-    risk_aversion = 1  # fixed
-    trade_aversion = params[0]
-    holding_cost = params[1]
+    risk_aversion = params[0]
+    trade_aversion = params[1]
+    holding_cost = 0.1  # fixed
     bid_ask_spread = params[2]
     borrow_cost = params[3]
 
