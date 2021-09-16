@@ -484,7 +484,7 @@ def get_discrete_dist_1d(arr, context_points):
     """
     unique, counts = np.unique(arr, return_counts=True)
     dic = dict(zip(unique, counts))
-    dist = np.zeros(len(context_points))
+    dist = np.ones(len(context_points))  # have non-zero probability for every possible value
     for i in range(len(context_points)):
         ctx = context_points[i][0]
         if ctx in dic.keys():

@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
+from tqdm import trange
+from time import process_time
 
 sys.path.append(sys.path[0][:-len('experiments')])  # for imports to work
 print(sys.path)
@@ -14,8 +16,6 @@ print(sys.path)
 from core.objectives import get_obj_func
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist, get_discrete_uniform_dist, \
     get_margin, adversarial_expectation, get_mid_approx_func, worst_case_sens, get_action_contexts
-from tqdm import trange
-from timeit import default_timer as timer
 
 matplotlib.use('Agg')
 
@@ -118,7 +118,7 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
         true_adv_exps.append(expectation)
 
         # Worst case sensitivity approximation
-        start = timer()
+        start = process_time()
         worst_case_sensitivity = worst_case_sens(fvals=f,
                                                  context_points=context_points,
                                                  kernel=kernel,
@@ -129,7 +129,7 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
                                             ref_dist=ref_dist,
                                             worst_case_sensitivity=worst_case_sensitivity,
                                             divergence=divergence)
-        end = timer()
+        end = process_time()
         wcs_adv_approxs.append(V_approx_func(epsilon))
         wcs_timings.append(end - start)
 
@@ -137,7 +137,7 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
         truncated_exps = []
         truncated_timings = []
         for max_iters in all_max_iters:
-            start = timer()
+            start = process_time()
             truncated_expectation, _ = adversarial_expectation(f=f,
                                                                M=M,
                                                                w_t=ref_dist,
@@ -145,16 +145,13 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
                                                                divergence=divergence,
                                                                cvx_opt_max_iters=max_iters,
                                                                cvx_solver='SCS')
-            end = timer()
+            end = process_time()
             truncated_exps.append(truncated_expectation)
             truncated_timings.append(end - start)
         all_truncated_exps.append(truncated_exps)
         all_truncated_timings.append(truncated_timings)
 
     true_adv_exps = np.array(true_adv_exps)
-    best_action = np.argmax(true_adv_exps)
-    best_expectation = np.max(true_adv_exps)
-
     print("Adv. expectations = {}".format(true_adv_exps))
 
     # Get WCS approximation error, averaged across all actions
