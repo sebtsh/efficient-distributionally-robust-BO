@@ -11,3 +11,5 @@ tensorflow-estimator==2.4.0
 tensorflow-probability==0.12.2
 tqdm==4.61.2
 trieste==0.5.1
+cvxportfolio==0.0.12
+quandl==3.6.1
