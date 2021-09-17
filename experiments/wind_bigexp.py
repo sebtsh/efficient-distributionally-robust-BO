@@ -40,7 +40,6 @@ def wind():
     obs_variance = 0.001
     is_optimizing_gp = False
     opt_max_iter = 10
-    num_bo_iters = 200
     num_init_points = 10
     beta_const = 2
     seed = 0
@@ -51,9 +50,12 @@ def wind():
 @ex.automain
 def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers, context_lowers, context_uppers,
          action_density_per_dim, context_density_per_dim, ls, obs_variance, is_optimizing_gp, opt_max_iter,
-         num_bo_iters, num_init_points, beta_const, seed, month, show_plots):
-    Path("runs/plots").mkdir(parents=True, exist_ok=True)
-    Path("runs/indiv_results").mkdir(parents=True, exist_ok=True)
+         num_init_points, beta_const, seed, month, show_plots):
+    dir = "runs/" + obj_func_name + "/"
+    plot_dir = dir + "plots/"
+    result_dir = dir + "indiv_results/"
+    Path(plot_dir).mkdir(parents=True, exist_ok=True)
+    Path(result_dir).mkdir(parents=True, exist_ok=True)
 
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
@@ -174,12 +176,12 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                            np.max([action_density_per_dim, context_density_per_dim]), contour=True,
                                            title=title, colorbar=True)
                 plot_bo_points_2d(query_points, ax, num_init=num_init_points, maximizer=maximizer)
-                fig.savefig("runs/plots/" + file_name + "-obj_func.png")
+                fig.savefig(plot_dir + file_name + "-obj_func.png")
                 plt.close(fig)
 
                 fig, ax = plot_gp_2d(model.gp, mins=all_lowers, maxs=all_uppers,
                                      grid_density=np.max([action_density_per_dim, context_density_per_dim]),
-                                     save_location="runs/plots/" + file_name + "-gp.png")
+                                     save_location=plot_dir + file_name + "-gp.png")
                 plt.close(fig)
 
             fig, ax, regrets, cumulative_regrets = plot_robust_regret(obj_func=obj_func,
@@ -193,15 +195,15 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                                                       robust_expectation_action=(
                                                                           robust_expectation, robust_action),
                                                                       title=title)
-            fig.savefig("runs/plots/" + file_name + "-regret.png")
+            fig.savefig(plot_dir + file_name + "-regret.png")
             plt.close(fig)
 
             fig = plot_cumulative_rewards(cumulative_rewards=cumulative_rewards,
                                           title=title)
-            fig.savefig("runs/plots/" + file_name + "-rewards.png")
+            fig.savefig(plot_dir + file_name + "-rewards.png")
 
             pickle.dump((regrets, cumulative_regrets, average_acq_time, query_points, rewards, cumulative_rewards),
-                        open("runs/indiv_results" + file_name + ".p", "wb"))
+                        open(result_dir + file_name + ".p", "wb"))
 
             if show_plots:
                 plt.show()

@@ -52,7 +52,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
          dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_schedule,
          ref_var, seed, show_plots):
     Path("runs/plots").mkdir(parents=True, exist_ok=True)
-    Path("runs/indiv_results").mkdir(parents=True, exist_ok=True)
+    Path("runs/indiv_results2").mkdir(parents=True, exist_ok=True)
 
     divergences = ['MMD_approx']
     ref_means = [0, 0.25, 0.5]
@@ -179,7 +179,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                     plt.close(fig)
 
                     pickle.dump((regrets, cumulative_regrets, average_acq_time, query_points),
-                                open("runs/indiv_results" + file_name + ".p", "wb"))
+                                open("runs/indiv_results2" + file_name + ".p", "wb"))
 
                     if show_plots:
                         plt.show()
