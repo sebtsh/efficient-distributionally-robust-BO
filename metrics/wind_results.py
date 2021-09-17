@@ -23,7 +23,7 @@ def default():
 @ex.automain
 def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, show_plots, figsize=(15, 6), dpi=None):
     dir = "runs/" + obj_func_name + "/results/"
-    indiv_results_dir = "runs/" + obj_func_name + "indiv_results/"
+    indiv_results_dir = "runs/" + obj_func_name + "/indiv_results/"
     Path(dir).mkdir(parents=True, exist_ok=True)
 
     divergences = ['MMD', 'MMD_approx', 'TV', 'modified_chi_squared']
