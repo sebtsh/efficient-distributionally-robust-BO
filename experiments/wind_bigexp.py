@@ -50,7 +50,7 @@ def wind():
 @ex.automain
 def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers, context_lowers, context_uppers,
          action_density_per_dim, context_density_per_dim, ls, obs_variance, is_optimizing_gp, opt_max_iter,
-         num_init_points, beta_const, seed, month, show_plots):
+         num_init_points, beta_const, seed, month):
     dir = "runs/" + obj_func_name + "/"
     plot_dir = dir + "plots/"
     result_dir = dir + "indiv_results/"
@@ -204,6 +204,3 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
 
             pickle.dump((regrets, cumulative_regrets, average_acq_time, query_points, rewards, cumulative_rewards),
                         open(result_dir + file_name + ".p", "wb"))
-
-            if show_plots:
-                plt.show()

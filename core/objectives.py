@@ -1,31 +1,11 @@
 from collections.abc import Callable
 
 import numpy as np
+import pickle
 import tensorflow as tf
 from trieste.space import Box
-from trieste.type import TensorType
-from trieste.utils.objectives import branin
 
 from core.utils import discretize_Box
-
-
-def neg_forrester(x: TensorType) -> TensorType:
-    """
-    Negative of the 1-dimensional test function by Forrester et. al. (2008). Defined as f(x) = -(6x-2)^2 * sin(12x-4).
-    Typically evaluated over [0, 1]. We take the negative so that we have a maximization problem
-    :param x: tensor of shape (..., 1), x1 in [0, 1]
-    :return: tensor of shape (..., 1)
-    """
-    tf.debugging.assert_shapes([(x, (..., 1))])
-    return -(6 * x - 2) * (6 * x - 2) * tf.sin(12 * x - 4)
-
-
-NEG_FORRESTER_MAXIMIZER = 0.7572488
-NEG_FORRESTER_MAXIMUM = 6.020740
-
-
-def neg_branin(x: TensorType) -> TensorType:
-    return -branin(x)
 
 
 def standardize_objective(obj_func: Callable,
@@ -48,14 +28,16 @@ def standardize_objective(obj_func: Callable,
 
 
 def get_obj_func(name, lowers, uppers, kernel, rand_func_num_points=100, seed=0):
-    if name == 'neg_forrester':
-        return neg_forrester
-    elif name == 'neg_branin':
-        return neg_branin
-    elif name == 'rand_func':
+    if name == 'rand_func':
         return sample_GP_prior(kernel, lowers, uppers, rand_func_num_points, seed)
     elif name == 'wind':
         return wind_cost
+    elif name == 'portfolio':
+        X = pickle.load(open("data/portfolio/normalized_samples.p", "rb"))
+        y = pickle.load(open("data/portfolio/standardized_returns.p", "rb"))
+        return get_obj_func_from_samples(kernel, X, y)
+    else:
+        raise Exception("Incorrect name passed to get_obj_func")
 
 
 def sample_GP_prior(kernel, lowers, uppers, num_points, seed=0, jitter=1e-03):
@@ -78,6 +60,21 @@ def sample_GP_prior(kernel, lowers, uppers, num_points, seed=0, jitter=1e-03):
     L_inv = np.linalg.inv(np.linalg.cholesky(cov))
     K_inv_f = L_inv.T @ L_inv @ f_vals
     return lambda x: kernel(x, points) @ K_inv_f
+
+
+def get_obj_func_from_samples(kernel, X, y, jitter=1e-03):
+    """
+    Constructs an objective function from samples. Interpolates between the samples like a GP posterior would.
+    :param kernel: a GPflow kernel
+    :param X: array of shape (n, d)
+    :param y: array of shape (n, 1)
+    :param jitter:
+    :return:
+    """
+    cov = kernel(X) + jitter * np.eye(len(X), dtype=np.float32)
+    L_inv = np.linalg.inv(np.linalg.cholesky(cov))
+    K_inv_f = L_inv.T @ L_inv @ y
+    return lambda x: kernel(x, X) @ K_inv_f
 
 
 def wind_cost(action_contexts):
