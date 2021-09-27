@@ -297,7 +297,14 @@ def modified_chi_squared(w1: TensorType,
     return w2 @ phi(w1 / w2)
 
 
+def variance_p(fvals,
+               p):
+    mean = p @ fvals
+    return p @ (fvals - mean) ** 2
+
+
 def worst_case_sens(fvals,
+                    p,
                     context_points,
                     kernel,
                     divergence):
@@ -313,7 +320,7 @@ def worst_case_sens(fvals,
     elif divergence == 'TV':
         worst_case_sensitivity = 0.5 * (np.max(fvals) - np.min(fvals))
     elif divergence == 'modified_chi_squared':
-        worst_case_sensitivity = np.sqrt(2 * np.var(fvals))
+        worst_case_sensitivity = np.sqrt(2 * variance_p(fvals, p))
     else:
         raise Exception("Invalid divergence passed to worst_case_sens")
     return worst_case_sensitivity
@@ -424,7 +431,8 @@ def get_mid_approx_func(context_points,
     elif divergence == 'TV':
         eps_max = np.squeeze(TV(worst_dist, ref_dist))
     elif divergence == 'modified_chi_squared':
-        eps_max = np.sqrt(np.squeeze(modified_chi_squared(worst_dist, ref_dist)))  # Take the square root
+        sqrt_eps_max = np.sqrt(np.squeeze(modified_chi_squared(worst_dist, ref_dist)))  # Take the square root
+        sqrt_eps_l = np.sqrt(eps_l)
     else:
         raise Exception("Invalid divergence passed to get_mid_approx_func")
 
@@ -444,11 +452,11 @@ def get_mid_approx_func(context_points,
         # Account for the fact that what we have is actually a function on square root epsilon
         def f(eps):
             sqrt_eps = np.sqrt(eps)
-            if 0 <= sqrt_eps <= eps_l:
-                fval = f_0 + 0.5 * sqrt_eps * (f_prime_0 + (f_eps_max - f_0) / eps_max)
+            if 0 <= sqrt_eps <= sqrt_eps_l:
+                fval = f_0 + 0.5 * sqrt_eps * (f_prime_0 + (f_eps_max - f_0) / sqrt_eps_max)
                 return fval
-            elif eps_l < sqrt_eps < eps_max:
-                fval = 0.5 * (f_0 + sqrt_eps * ((f_eps_max - f_0) / eps_max) + f_eps_max)
+            elif sqrt_eps_l < sqrt_eps < sqrt_eps_max:
+                fval = 0.5 * (f_0 + sqrt_eps * ((f_eps_max - f_0) / sqrt_eps_max) + f_eps_max)
                 return fval
             else:
                 return f_eps_max

@@ -154,6 +154,7 @@ class DRBOWorstCaseSens(Acquisition):
             expected_ucb = np.sum(ref_dist * ucb_vals)  # SAA
 
             worst_case_sensitivity = worst_case_sens(fvals=ucb_vals,
+                                                     p=ref_dist,
                                                      context_points=context_points,
                                                      kernel=kernel,
                                                      divergence=divergence)
@@ -218,6 +219,7 @@ class WorstCaseSensTS(Acquisition):
             expected_fvals = np.sum(ref_dist * fvals)  # SAA
 
             worst_case_sensitivity = worst_case_sens(fvals=fvals,
+                                                     p=ref_dist,
                                                      context_points=context_points,
                                                      kernel=kernel,
                                                      divergence=divergence)
@@ -270,6 +272,7 @@ class DRBOCubicApprox(Acquisition):
             fvals, _ = get_upper_lower_bounds(model, action_contexts, self.beta(t))  # (num_context_points, )
 
             worst_case_sensitivity = worst_case_sens(fvals=fvals,
+                                                     p=ref_dist,
                                                      context_points=context_points,
                                                      kernel=kernel,
                                                      divergence=divergence)
@@ -330,6 +333,7 @@ class CubicApproxTS(Acquisition):
             fvals = all_fvals[i * num_context_points:(i + 1) * num_context_points]
 
             worst_case_sensitivity = worst_case_sens(fvals=fvals,
+                                                     p=ref_dist,
                                                      context_points=context_points,
                                                      kernel=kernel,
                                                      divergence=divergence)
@@ -379,6 +383,7 @@ class DRBOMidApprox(Acquisition):
             fvals, _ = get_upper_lower_bounds(model, action_contexts, self.beta(t))  # (num_context_points, )
 
             worst_case_sensitivity = worst_case_sens(fvals=fvals,
+                                                     p=ref_dist,
                                                      context_points=context_points,
                                                      kernel=kernel,
                                                      divergence=divergence)
@@ -439,6 +444,7 @@ class MidApproxTS(Acquisition):
             fvals = all_fvals[i * num_context_points:(i + 1) * num_context_points]
 
             worst_case_sensitivity = worst_case_sens(fvals=fvals,
+                                                     p=ref_dist,
                                                      context_points=context_points,
                                                      kernel=kernel,
                                                      divergence=divergence)

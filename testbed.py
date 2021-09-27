@@ -16,7 +16,7 @@ Path("plots").mkdir(parents=True, exist_ok=True)
 
 acq_name = 'GP-UCB'
 obj_func_name = 'rand_func'
-divergence = 'MMD'  # 'MMD', 'TV' or 'modified_chi_squared'
+divergence = 'modified_chi_squared'  # 'MMD', 'TV' or 'modified_chi_squared'
 dims = 2
 lowers = [0] * dims
 uppers = [1] * dims
@@ -80,7 +80,7 @@ num_action_points = len(action_points)
 ###################################################################
 
 #Compare DRBO and worst-case sensitivity choices
-epsilons = np.linspace(0, 1.2, 200)  # MMD: 1.2,  # chisquared: 10, TV: 3
+epsilons = np.linspace(0, 63, 200)  # MMD: 1.2,  # chisquared: 63, TV: 3
 
 for seed in range(10):
     obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, rand_func_num_points, seed)
@@ -114,6 +114,11 @@ for seed in range(10):
             else:
                 M = None
 
+            # worst_dist = np.zeros(len(context_points))
+            # worst_dist[np.argmin(fvals)] = 1
+            # eps_max = np.squeeze(modified_chi_squared(worst_dist, ref_dist))
+            # print(eps_max)
+
             # DRBO-General
             expectation, _ = adversarial_expectation(f=fvals,
                                                      M=M,
@@ -126,6 +131,7 @@ for seed in range(10):
             # Worst-case sensitivity
             expected_fvals = np.sum(ref_dist * fvals)  # SAA
             worst_case_sensitivity = worst_case_sens(fvals=fvals,
+                                                     p=ref_dist,
                                                      context_points=context_points,
                                                      kernel=kernel,
                                                      divergence=divergence)
@@ -199,7 +205,7 @@ for seed in range(10):
     plt.plot(epsilons, worst_case_sens_values, label='Worst-case sens', color='#26c485')
     #plt.plot(epsilons, cubic_approx_values, label='Cubic approx.', color='#00a6ed')
     plt.plot(epsilons, mid_approx_values, label='Mid approx.', color='#9f956c')
-    plt.plot(epsilons, mmd_approxK_approx_values, label='MMD approxK approx.', color='#00a6ed')
+    #plt.plot(epsilons, mmd_approxK_approx_values, label='MMD approxK approx.', color='#00a6ed')
     plt.legend()
     title = "{}-seed{}-mid".format(divergence, seed)
     plt.title(title)

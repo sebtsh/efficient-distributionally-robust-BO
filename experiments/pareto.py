@@ -120,6 +120,7 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
         # Worst case sensitivity approximation
         start = process_time()
         worst_case_sensitivity = worst_case_sens(fvals=f,
+                                                 p=ref_dist,
                                                  context_points=context_points,
                                                  kernel=kernel,
                                                  divergence=divergence)
