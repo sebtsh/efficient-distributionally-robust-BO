@@ -41,22 +41,24 @@ def rand_func():
     opt_max_iter = 10
     num_bo_iters = 200
     num_init_points = 10
-    beta_schedule = 'constant'  # 'constant' or 'linear'
+    beta_const = 2
     ref_var = 0.05
     seed = 0
 
 
 @ex.automain
 def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_points,
-         dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_schedule,
+         dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_const,
          ref_var, seed):
-    Path("runs/plots").mkdir(parents=True, exist_ok=True)
-    Path("runs/indiv_results").mkdir(parents=True, exist_ok=True)
+    dir = "runs/" + obj_func_name + "/"
+    plot_dir = dir + "plots/"
+    result_dir = dir + "indiv_results/"
+    Path(plot_dir).mkdir(parents=True, exist_ok=True)
+    Path(result_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['MMD_approx']
+    divergences = ['modified_chi_squared']
     ref_means = [0, 0.25, 0.5]
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox', 'DRBOMidApprox']
-    beta_consts = [0, 0.5, 1, 2, 3, 4]
+    acquisitions = ['GP-UCB', 'DRBOWorstCaseSens', 'DRBOMidApprox']
 
     for divergence in divergences:
         for ref_mean in ref_means:
@@ -95,87 +97,80 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                                                                   obj_func=obj_func)
 
             for acq_name in acquisitions:
-                for beta_const in beta_consts:
-                    file_name = "{}-{}-{}-seed{}-beta{}{}-refmean{}".format(obj_func_name,
-                                                                            divergence,
-                                                                            acq_name,
-                                                                            seed,
-                                                                            beta_const,
-                                                                            beta_schedule,
-                                                                            ref_mean)
-                    print("==========================")
-                    print("Running experiment " + file_name)
-                    print("Using margin = {}".format(margin))
-                    np.random.seed(seed)
+                file_name = "{}-{}-{}-seed{}-beta{}-refmean{}".format(obj_func_name,
+                                                                      divergence,
+                                                                      acq_name,
+                                                                      seed,
+                                                                      beta_const,
+                                                                      ref_mean)
+                print("==========================")
+                print("Running experiment " + file_name)
+                print("Using margin = {}".format(margin))
+                np.random.seed(seed)
 
-                    observer = mk_noisy_observer(obj_func, obs_variance)
-                    init_dataset = observer(search_points[np.random.randint(0, len(search_points), num_init_points)])
+                observer = mk_noisy_observer(obj_func, obs_variance)
+                init_dataset = observer(search_points[np.random.randint(0, len(search_points), num_init_points)])
 
-                    # Model
-                    model = GPRModule(dims=dims,
-                                      kernel=f_kernel,
-                                      noise_variance=obs_variance,
-                                      dataset=init_dataset,
-                                      opt_max_iter=opt_max_iter)
+                # Model
+                model = GPRModule(dims=dims,
+                                  kernel=f_kernel,
+                                  noise_variance=obs_variance,
+                                  dataset=init_dataset,
+                                  opt_max_iter=opt_max_iter)
 
-                    # Acquisition
-                    # Create beta schedule
-                    if beta_schedule == 'constant':
-                        beta = lambda x: beta_const
-                    elif beta_schedule == 'linear':
-                        beta = get_beta_linear_schedule(2, 0, 100)
-                    else:
-                        raise Exception("Incorrect beta_schedule provided")
-                    acquisition = get_acquisition(acq_name=acq_name,
-                                                  beta=beta,
-                                                  divergence=divergence)
+                # Acquisition
+                # Create beta schedule
+                beta = lambda x: beta_const
+                acquisition = get_acquisition(acq_name=acq_name,
+                                              beta=beta,
+                                              divergence=divergence)
 
-                    # Main BO loop
-                    final_dataset, model_params, average_acq_time = bayes_opt_loop_dist_robust(model=model,
-                                                                                               init_dataset=init_dataset,
-                                                                                               action_points=action_points,
-                                                                                               context_points=context_points,
-                                                                                               observer=observer,
-                                                                                               acq=acquisition,
-                                                                                               num_iters=num_bo_iters,
-                                                                                               reference_dist_func=ref_dist_func,
-                                                                                               true_dist_func=true_dist_func,
-                                                                                               margin_func=margin_func,
-                                                                                               divergence=divergence,
-                                                                                               mmd_kernel=mmd_kernel,
-                                                                                               optimize_gp=is_optimizing_gp)
-                    print("Final dataset: {}".format(final_dataset))
-                    print("Average acquisition time in seconds: {}".format(average_acq_time))
-                    # Plots
-                    query_points = final_dataset.query_points.numpy()
-                    maximizer = search_points[[np.argmax(obj_func(search_points))]]
-                    title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}{}".format(
-                        beta_const, beta_schedule)
+                # Main BO loop
+                final_dataset, model_params, average_acq_time = bayes_opt_loop_dist_robust(model=model,
+                                                                                           init_dataset=init_dataset,
+                                                                                           action_points=action_points,
+                                                                                           context_points=context_points,
+                                                                                           observer=observer,
+                                                                                           acq=acquisition,
+                                                                                           num_iters=num_bo_iters,
+                                                                                           reference_dist_func=ref_dist_func,
+                                                                                           true_dist_func=true_dist_func,
+                                                                                           margin_func=margin_func,
+                                                                                           divergence=divergence,
+                                                                                           mmd_kernel=mmd_kernel,
+                                                                                           optimize_gp=is_optimizing_gp)
+                print("Final dataset: {}".format(final_dataset))
+                print("Average acquisition time in seconds: {}".format(average_acq_time))
+                # Plots
+                query_points = final_dataset.query_points.numpy()
+                maximizer = search_points[[np.argmax(obj_func(search_points))]]
+                title = obj_func_name + "({}) ".format(seed) + acq_name + " " + divergence + ", b={}".format(
+                    beta_const)
 
-                    if dims == 2:
-                        fig, ax = plot_function_2d(obj_func, lowers, uppers, grid_density_per_dim, contour=True,
-                                                   title=title, colorbar=True)
-                        plot_bo_points_2d(query_points, ax, num_init=num_init_points, maximizer=maximizer)
-                        fig.savefig("runs/plots/" + file_name + "-obj_func.png")
-                        plt.close(fig)
-
-                        fig, ax = plot_gp_2d(model.gp, mins=lowers, maxs=uppers, grid_density=grid_density_per_dim,
-                                             save_location="runs/plots/" + file_name + "-gp.png")
-                        plt.close(fig)
-
-                    fig, ax, regrets, cumulative_regrets = plot_robust_regret(obj_func=obj_func,
-                                                                              query_points=query_points,
-                                                                              action_points=action_points,
-                                                                              context_points=context_points,
-                                                                              kernel=mmd_kernel,
-                                                                              ref_dist_func=ref_dist_func,
-                                                                              margin_func=margin_func,
-                                                                              divergence=divergence,
-                                                                              robust_expectation_action=(
-                                                                                  robust_expectation, robust_action),
-                                                                              title=title)
-                    fig.savefig("runs/plots/" + file_name + "-regret.png")
+                if dims == 2:
+                    fig, ax = plot_function_2d(obj_func, lowers, uppers, grid_density_per_dim, contour=True,
+                                               title=title, colorbar=True)
+                    plot_bo_points_2d(query_points, ax, num_init=num_init_points, maximizer=maximizer)
+                    fig.savefig("runs/plots/" + file_name + "-obj_func.png")
                     plt.close(fig)
 
-                    pickle.dump((regrets, cumulative_regrets, average_acq_time, query_points),
-                                open("runs/indiv_results" + file_name + ".p", "wb"))
+                    fig, ax = plot_gp_2d(model.gp, mins=lowers, maxs=uppers, grid_density=grid_density_per_dim,
+                                         save_location="runs/plots/" + file_name + "-gp.png")
+                    plt.close(fig)
+
+                fig, ax, regrets, cumulative_regrets = plot_robust_regret(obj_func=obj_func,
+                                                                          query_points=query_points,
+                                                                          action_points=action_points,
+                                                                          context_points=context_points,
+                                                                          kernel=mmd_kernel,
+                                                                          ref_dist_func=ref_dist_func,
+                                                                          margin_func=margin_func,
+                                                                          divergence=divergence,
+                                                                          robust_expectation_action=(
+                                                                              robust_expectation, robust_action),
+                                                                          title=title)
+                fig.savefig(plot_dir + file_name + "-regret.png")
+                plt.close(fig)
+
+                pickle.dump((regrets, cumulative_regrets, average_acq_time, query_points),
+                            open(result_dir + file_name + ".p", "wb"))

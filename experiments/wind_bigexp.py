@@ -57,8 +57,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
     Path(plot_dir).mkdir(parents=True, exist_ok=True)
     Path(result_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
+    divergences = ['modified_chi_squared']
+    acquisitions = ['DRBOWorstCaseSens', 'DRBOMidApprox']
 
     all_dims = action_dims + context_dims
     all_lowers = action_lowers + context_lowers
