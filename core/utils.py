@@ -432,7 +432,7 @@ def get_mid_approx_func(context_points,
         eps_max = np.squeeze(TV(worst_dist, ref_dist))
     elif divergence == 'modified_chi_squared':
         sqrt_eps_max = np.sqrt(np.squeeze(modified_chi_squared(worst_dist, ref_dist)))  # Take the square root
-        sqrt_eps_l = np.sqrt(eps_l)
+        sqrt_eps_l = eps_l
     else:
         raise Exception("Invalid divergence passed to get_mid_approx_func")
 
