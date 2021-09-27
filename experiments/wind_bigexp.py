@@ -44,7 +44,6 @@ def wind():
     beta_const = 2
     seed = 0
     month = 0  # 0-23
-    show_plots = False
 
 
 @ex.automain
