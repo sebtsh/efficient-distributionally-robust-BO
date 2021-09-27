@@ -1,7 +1,7 @@
 import numpy as np
 
 from gpflow.kernels import Kernel
-from timeit import default_timer as timer
+from time import process_time
 from tqdm import trange
 from trieste.data import Dataset
 from trieste.observer import SingleObserver
@@ -57,7 +57,7 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
         epsilon = margin_func(t)
 
         # Acquire next input locations to sample
-        start = timer()
+        start = process_time()
         action = acq.acquire(model=model,
                              action_points=action_points,
                              context_points=context_points,
@@ -66,7 +66,7 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
                              divergence=divergence,
                              kernel=mmd_kernel,
                              epsilon=epsilon)  # TensorType of shape (1, d_x)
-        end = timer()
+        end = process_time()
         times.append(end - start)  # Time taken to acquire in seconds
         if action is None:  # Early termination signal
             print("Early termination at timestep t={}".format(t))
