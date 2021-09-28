@@ -22,9 +22,9 @@ def default():
 
 @ex.automain
 def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, show_plots, figsize=(15, 6), dpi=None):
-    dir = "runs/" + obj_func_name + "/results/"
+    sum_results_dir = "runs/" + obj_func_name + "/summarized_results/"
     indiv_results_dir = "runs/" + obj_func_name + "/indiv_results/"
-    Path(dir).mkdir(parents=True, exist_ok=True)
+    Path(sum_results_dir).mkdir(parents=True, exist_ok=True)
 
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
@@ -109,7 +109,7 @@ def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, s
             print("{}-{} average acquisition time in seconds: {}".format(divergence,
                                                                          acquisition,
                                                                          np.mean(all_times)))
-        regret_fig.savefig(dir + plot_name + "-regret.png")
-        reward_fig.savefig(dir + plot_name + "-reward.png")
+        regret_fig.savefig(sum_results_dir + plot_name + "-regret.png")
+        reward_fig.savefig(sum_results_dir + plot_name + "-reward.png")
     if show_plots:
         plt.show()
