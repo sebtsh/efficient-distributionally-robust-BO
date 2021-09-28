@@ -57,7 +57,7 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, be
                                                                             beta,
                                                                             ref_mean)
                     regrets, cumulative_regrets, average_acq_time, query_points = pickle.load(
-                        open("runs/" + file_name, "rb"))
+                        open(result_dir + file_name, "rb"))
                     # cut out initial points
                     regrets = np.array(regrets[num_init_points:])
                     base_cumulative_regret = cumulative_regrets[num_init_points - 1]
