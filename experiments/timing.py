@@ -39,8 +39,6 @@ def rand_func():
     beta_const = 0
     ref_mean = 0.5
     ref_var = 0.05
-    true_mean = 0.2
-    true_var = 0.05
     seed = 0
     show_plots = False
 
@@ -48,17 +46,16 @@ def rand_func():
 @ex.automain
 def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_points,
          dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_const,
-         ref_mean, ref_var, true_mean, true_var, seed, show_plots, figsize=(15, 6), dpi=None):
-    Path("../runs/plots").mkdir(parents=True, exist_ok=True)
+         ref_mean, ref_var, seed, show_plots, figsize=(15, 6), dpi=None):
+    result_dir = "runs/timing/"
+    Path(result_dir).mkdir(parents=True, exist_ok=True)
     context_grid_densities = np.arange(200, 1800, 200)
-    divergences = ['MMD', 'TV', 'modified_chi_squared']
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOCubicApprox']
+    divergences = ['MMD', 'MMD_approx', 'TV', 'modified_chi_squared']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
     color_dict = {'GP-UCB': '#d7263d',
                   'DRBOGeneral': '#fbb13c',
                   'DRBOWorstCaseSens': '#26c485',
-                  'DRBOCubicApprox': '#00a6ed',
-                  'WorstCaseSensTS': '#9f956c',
-                  'CubicApproxTS': '#2f4858'}
+                  'DRBOMidApprox': '#00a6ed'}
 
     for divergence in divergences:
         timing_dict = {}
@@ -130,9 +127,9 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
         plt.xlabel("Size of context set")
         plt.ylabel("Seconds")
         plt.legend()
-        fig.savefig("runs/plots/" + "{}-timing.png".format(divergence))
+        fig.savefig(result_dir + "{}-timing.png".format(divergence))
 
-    pickle.dump(timing_dict, open("runs/timing_dict.p", "wb"))
+    pickle.dump(timing_dict, open(result_dir + "timing_dict.p", "wb"))
 
     if show_plots:
         plt.show()
