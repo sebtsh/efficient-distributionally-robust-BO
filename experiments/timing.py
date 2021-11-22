@@ -120,16 +120,15 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
                 average_acq_times.append(average_acq_time)
             timing_dict[acq_name] = np.array(average_acq_times)
         # Plots
-        fig = plt.figure(figsize=figsize, dpi=dpi)
-        for acquisition in acquisitions:
-            plt.plot(context_grid_densities, timing_dict[acquisition], label=acquisition, color=color_dict[acquisition])
-        plt.title("{} average acquisition time in seconds".format(divergence))
-        plt.xlabel("Size of context set")
-        plt.ylabel("Seconds")
-        plt.legend()
-        fig.savefig(result_dir + "{}-timing.png".format(divergence))
-
-    pickle.dump(timing_dict, open(result_dir + "timing_dict.p", "wb"))
+        # fig = plt.figure(figsize=figsize, dpi=dpi)
+        # for acquisition in acquisitions:
+        #     plt.plot(context_grid_densities, timing_dict[acquisition], label=acquisition, color=color_dict[acquisition])
+        # plt.title("{} average acquisition time in seconds".format(divergence))
+        # plt.xlabel("Size of context set")
+        # plt.ylabel("Seconds")
+        # plt.legend()
+        # fig.savefig(result_dir + "{}-timing.png".format(divergence))
+        pickle.dump(timing_dict, open(result_dir + f"timing_dict-{divergence}.p", "wb"))
 
     if show_plots:
         plt.show()
