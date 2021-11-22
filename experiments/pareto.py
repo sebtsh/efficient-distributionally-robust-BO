@@ -40,7 +40,7 @@ def rand_func():
     ref_mean = 0.5
     ref_var = 0.1
     num_scs_max_iters = 20
-    scs_max_iter_block = 10
+    scs_max_iter_block = 400
     seed = 0
     show_plots = False
 
@@ -49,7 +49,8 @@ def rand_func():
 def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers, context_uppers,
          action_density_per_dim, context_density_per_dim, rand_func_num_points, action_dims, context_dims, ls, ref_mean,
          ref_var, num_scs_max_iters, scs_max_iter_block, seed, show_plots):
-    Path("../runs/plots").mkdir(parents=True, exist_ok=True)
+    result_dir = "runs/pareto/"
+    Path(result_dir).mkdir(parents=True, exist_ok=True)
     np.random.seed(seed)
     all_dims = action_dims + context_dims
     all_lowers = action_lowers + context_lowers
@@ -185,6 +186,9 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
                                                                                 scs_max_iter_block,
                                                                                 context_density_per_dim)
 
+    pickle.dump((true_adv_exps, wcs_adv_approxs, wcs_timings, all_truncated_exps, all_truncated_timings),
+                open(result_dir + file_name + ".p", "wb"))
+
     plt.scatter(truncated_average_timings, truncated_average_error, label='Truncated convex opt.')
     plt.scatter([wcs_average_timing], [wcs_average_error], label='Worst case sens.')
 
@@ -194,6 +198,4 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
     if show_plots:
         plt.show()
     fig = plt.gcf()
-    fig.savefig("runs/plots/" + file_name + ".png")
-    pickle.dump((true_adv_exps, wcs_adv_approxs, wcs_timings, all_truncated_exps, all_truncated_timings),
-                open("runs/" + file_name + ".p", "wb"))
+    fig.savefig(result_dir + file_name + ".png")
