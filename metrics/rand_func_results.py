@@ -12,7 +12,7 @@ ex.observers.append(FileStorageObserver('../runs'))
 @ex.named_config
 def default():
     obj_func_name = 'rand_func'
-    num_bo_iters = 200
+    num_bo_iters = 400
     num_init_points = 10
     num_seeds = 10
     show_plots = True

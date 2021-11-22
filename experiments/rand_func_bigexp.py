@@ -35,14 +35,14 @@ def rand_func():
     uppers = [1] * dims
     grid_density_per_dim = 20
     rand_func_num_points = 100
-    ls = 0.1
+    ls = 0.05
     obs_variance = 0.001
     is_optimizing_gp = False
     opt_max_iter = 10
-    num_bo_iters = 200
+    num_bo_iters = 400
     num_init_points = 10
     beta_const = 2
-    ref_var = 0.05
+    ref_var = 0.02
     seed = 0
 
 
@@ -56,9 +56,9 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
     Path(plot_dir).mkdir(parents=True, exist_ok=True)
     Path(result_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['modified_chi_squared']
+    divergences = ['MMD', 'MMD_approx', 'TV', 'modified_chi_squared']
     ref_means = [0, 0.25, 0.5]
-    acquisitions = ['GP-UCB', 'DRBOWorstCaseSens', 'DRBOMidApprox']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
 
     for divergence in divergences:
         for ref_mean in ref_means:

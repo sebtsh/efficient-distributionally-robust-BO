@@ -38,14 +38,14 @@ def portfolio():
     context_uppers = [1] * context_dims
     action_density_per_dim = 10
     context_density_per_dim = 10
-    ls = [0.1, 0.5, 0.1, 0.5]
+    ls = [0.05, 0.5, 0.05, 0.5]
     obs_variance = 0.001
     is_optimizing_gp = False
     opt_max_iter = 10
     num_bo_iters = 500
     num_init_points = 10
     beta_const = 2
-    ref_var = 0.05
+    ref_var = 0.02
     seed = 0
 
 
