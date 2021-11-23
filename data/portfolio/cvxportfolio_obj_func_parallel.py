@@ -32,7 +32,7 @@ returns = returns.fillna(method='ffill').iloc[1:]
 r_hat = returns.rolling(window=250, min_periods=250).mean().shift(1).dropna()
 Sigma_hat = returns.rolling(window=250, min_periods=250, closed='neither').cov().dropna().droplevel(1)
 risk_model = cp.FullSigma(Sigma_hat)
-leverage_limit = cp.LeverageLimit(5)
+leverage_limit = cp.LeverageLimit(3)
 
 num_samples = 2048
 
@@ -40,7 +40,7 @@ num_samples = 2048
 sampler = qmc.Sobol(d=4, scramble=False)
 sample = sampler.random(num_samples)
 lowers = np.log([0.1, 5.5, 1e-04, 1e-04])  # Work in log scale
-uppers = np.log([1000, 8, 1e-02, 1e-03])
+uppers = np.log([10, 8, 1e-02, 1e-03])
 scaled_samples = qmc.scale(sample, lowers, uppers)
 pickle.dump(scaled_samples, open("data/portfolio/scaled_samples.p", "wb"))
 
@@ -50,7 +50,7 @@ def get_returns(i):
     params = scaled_samples[i]
     risk_aversion = np.exp(params[0])  # Params are in log scale, so we take the exp now
     trade_aversion = np.exp(params[1])
-    holding_cost = 50  # fixed
+    holding_cost = 0.1  # fixed
     bid_ask_spread = np.exp(params[2])
     borrow_cost = np.exp(params[3])
 
