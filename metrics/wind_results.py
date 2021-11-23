@@ -24,6 +24,12 @@ def default():
 @ex.automain
 def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, show_plots, mode, figsize=(8, 6),
          dpi=200):
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.family": "serif"})
+    text_size = 26
+    tick_size = 20
+
     sum_results_dir = "runs/" + obj_func_name + "/summarized_results/"
     indiv_results_dir = "runs/" + obj_func_name + "/indiv_results/"
     Path(sum_results_dir).mkdir(parents=True, exist_ok=True)
@@ -163,14 +169,16 @@ def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, s
                 std_err_cumu_rewards = np.std(all_cumu_rewards, axis=0) / np.sqrt(num_months)
 
                 # Cumulative rewards
-                plt.plot(x, mean_cumu_rewards, label=acq_name_dict[acquisition], color=color)
+                plt.plot(x, mean_cumu_rewards, label='\\textsc{' + acq_name_dict[acquisition] + '}', color=color)
                 plt.fill_between(x, mean_cumu_rewards - std_err_cumu_rewards,
                                  mean_cumu_rewards + std_err_cumu_rewards,
                                  alpha=0.2, color=color)
-                plt.legend(fontsize=18)
-                plt.xlabel("Timesteps", size=20)
-                plt.ylabel("Cumulative reward", size=20)
-            plt.savefig(sum_results_dir + divergence + "-reward.png", figsize=figsize, dpi=dpi, bbox_inches='tight')
+                plt.legend(fontsize=text_size-2)
+                plt.xlabel("Timesteps", size=text_size)
+                plt.ylabel("Cumulative reward", size=text_size)
+                plt.xticks(size=tick_size)
+                plt.yticks(size=tick_size)
+            plt.savefig(sum_results_dir + f"wind-{divergence}-reward.png", figsize=figsize, dpi=dpi, bbox_inches='tight')
 
     if show_plots:
         plt.show()

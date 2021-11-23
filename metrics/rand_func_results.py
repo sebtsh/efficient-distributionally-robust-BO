@@ -22,6 +22,12 @@ def default():
 
 @ex.automain
 def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, beta, mode, figsize=(8, 6), dpi=200):
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.family": "serif"})
+    text_size = 26
+    tick_size = 20
+
     Path("runs/results").mkdir(parents=True, exist_ok=True)
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
     #divergences = ['MMD_approx']
@@ -100,7 +106,7 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, be
 
             for i, ref_mean in enumerate([0, 0.5]):
                 plot_name = f"Ref. mean = {ref_mean}"
-                axs[i].set_title(plot_name, size=20)
+                axs[i].set_title(plot_name, size=text_size)
                 for acquisition in acquisitions:
                     color = color_dict[acquisition]
                     all_regrets = np.zeros((num_seeds, num_bo_iters))
@@ -131,11 +137,11 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, be
                                         mean_cumu_regrets + std_err_cumu_regrets,
                                         alpha=0.2, color=color)
                     #axs[i].legend(fontsize=20)
-                    axs[i].set_xlabel("Timesteps", size=20)
-                    axs[i].set_ylabel("Cumulative regret", size=20)
-                    axs[i].tick_params(labelsize=20)
+                    axs[i].set_xlabel("Timesteps", size=text_size)
+                    axs[i].set_ylabel("Cumulative robust regret", size=text_size)
+                    axs[i].tick_params(labelsize=tick_size)
 
             fig.tight_layout()
-            fig.savefig(sum_results_dir + divergence + "-regret.png", figsize=figsize, dpi=dpi, bbox_inches='tight')
+            fig.savefig(sum_results_dir + f"rand-{divergence}-regret.png", figsize=figsize, dpi=dpi, bbox_inches='tight')
     if show_plots:
         plt.show()
