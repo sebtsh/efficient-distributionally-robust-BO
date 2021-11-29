@@ -3,10 +3,15 @@ Some code from https://github.com/peter-i-frazier/group-testing
 """
 import numpy as np
 import pickle
+import sys
 from joblib import Parallel, delayed
 
 from multi_group_simulation import MultiGroupSimulation
 from load_params import load_params
+
+sys.path.append(sys.path[0][:-len('data/covid/')])  # for imports to work
+print(sys.path)
+
 from core.utils import cross_product
 
 
