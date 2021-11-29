@@ -24,7 +24,7 @@ def default():
 def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, beta, mode, figsize=(8, 6), dpi=200):
     plt.rcParams.update({
         "text.usetex": True,
-        "font.family": "serif"})
+        "font.family": "sans-serif"})
     text_size = 26
     tick_size = 20
 

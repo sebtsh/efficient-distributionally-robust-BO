@@ -26,7 +26,7 @@ def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, s
          dpi=200):
     plt.rcParams.update({
         "text.usetex": True,
-        "font.family": "serif"})
+        "font.family": "sans-serif"})
     text_size = 26
     tick_size = 20
 
@@ -43,7 +43,7 @@ def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, s
                   'DRBOMidApprox': '#00a6ed'}
 
     acq_name_dict = {'GP-UCB': 'GP-UCB',
-                     'DRBOGeneral': 'DRBOGeneral',
+                     'DRBOGeneral': 'Exact',
                      'DRBOWorstCaseSens': 'WCS',
                      'DRBOMidApprox': 'MinimaxApprox'}
 
