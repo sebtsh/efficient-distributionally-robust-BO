@@ -36,6 +36,9 @@ def get_obj_func(name, lowers, uppers, kernel, rand_func_num_points=100, seed=0)
         X = pickle.load(open("data/portfolio/normalized_samples.p", "rb"))
         y = pickle.load(open("data/portfolio/standardized_returns.p", "rb"))
         return get_obj_func_from_samples(kernel, X, y)
+    elif name == 'covid':
+        X, y = pickle.load(open("data/covid/covid_X_y.p", "rb"))
+        return get_obj_func_from_samples(kernel, X, y)
     else:
         raise Exception("Incorrect name passed to get_obj_func")
 
