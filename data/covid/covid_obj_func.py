@@ -62,9 +62,9 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
     gs_params = load_params(base_dir + 'group_3_students_post_movein_private.yaml')[1]
     params_list = [ug_ga_params.copy(), ug_other_params.copy(), gs_params.copy()]
 
-    interaction_matrix = 10 * np.array([[3/4, 1/4, 1/4],
-                                        [1/4, 3/4, 1/4],
-                                        [1/4, 1/4, 3/4]])
+    interaction_matrix = 10 * np.array([[4/5, 0, 0],
+                                        [0, 4/5, 0],
+                                        [0, 0, 4/5]])
 
     # adding population size
     params_list[0]['population_size'] = 10000
@@ -72,7 +72,7 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
     params_list[2]['population_size'] = 10000
 
     # total tests
-    total_tests = 5000
+    total_tests = 2000
 
     for idx in range(3):
         params_list[idx]['daily_outside_infection_p'] *= 2
@@ -132,6 +132,6 @@ if __name__ == "__main__":
     pickle.dump((all_params, all_results), open(base_dir + 'covid_params_results.p', 'wb'))
 
     X = all_params
-    y = all_results
+    y = np.array(all_results)
     y_hat = ((-y - np.mean(-y)) / np.std(-y))[:, None]
     pickle.dump((X, y_hat), open(base_dir + 'covid_X_y.p', 'wb'))
