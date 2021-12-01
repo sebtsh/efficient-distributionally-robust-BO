@@ -42,10 +42,10 @@ def covid():
     obs_variance = 0.001
     is_optimizing_gp = False
     opt_max_iter = 10
-    num_bo_iters = 500
+    num_bo_iters = 1000
     num_init_points = 10
     beta_const = 2
-    ref_var = 0.02
+    ref_var = 0.01
     seed = 0
 
 
@@ -61,7 +61,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
 
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
-    ref_means = np.array([[0., 0.], [0.25, 0.25], [0.5, 0.5]])
+    ref_means = np.array([[0., 0.], [0., 1.], [1., 0.]])
     ref_cov = ref_var * np.eye(context_dims)
 
     all_dims = action_dims + context_dims
@@ -90,6 +90,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                 context_points = cross_product(context_points,
                                                construct_grid_1d(context_lowers[i + 1], context_uppers[i + 1],
                                                                  context_density_per_dim))
+            # Some contexts are invalid: we only keep those that c[0] + c[1] <= 1
+            context_points = np.delete(context_points, np.where(np.sum(context_points, axis=1) > 1), axis=0)
             search_points = cross_product(action_points, context_points)
 
             # Warning: move kernels into inner loop if optimizing kernel
