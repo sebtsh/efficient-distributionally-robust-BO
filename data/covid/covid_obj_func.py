@@ -42,7 +42,6 @@ def get_trajectories(transmission_p, n, params_list, interaction_matrix, group_n
 
 
 def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_1,
-                 total_tests=2000,
                  num_trajectories=10):
     """
 
@@ -50,7 +49,6 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
     :param prop_tests_1: float in [0, 1]. prop_tests_0 + prop_tests_1 <= 1.
     :param prop_init_cases_0: float in [0, 1]. Environment variable.
     :param prop_init_cases_1: float in [0, 1]. Environment variable.
-    :param total_tests: int. Total number of tests available to deploy.
     :param num_trajectories: int. Number of Monte Carlo trajectories to run.
     :return: float. Median number of cases.
     """
@@ -62,30 +60,26 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
     gs_params = load_params(base_dir + 'group_3_students_post_movein_private.yaml')[1]
     params_list = [ug_ga_params.copy(), ug_other_params.copy(), gs_params.copy()]
 
-    # Scaling of the interaction matrix is wrong, made up number of f/s -> f/s contact
-    interaction_matrix = 10 * np.array([[92 / 125, 1 / 44, 0],
-                                        [3.5 / 125, 6.5 / 44, 0],
-                                        [0, 1 / 44, 1 / 15]])
+    interaction_matrix = 10 * np.array([[3/4, 1/4, 1/4],
+                                        [1/4, 3/4, 1/4],
+                                        [1/4, 1/4, 3/4]])
 
     # adding population size
-    params_list[0]['population_size'] = 3533
-    params_list[1]['population_size'] = 8434
-    params_list[2]['population_size'] = 6202
+    params_list[0]['population_size'] = 10000
+    params_list[1]['population_size'] = 10000
+    params_list[2]['population_size'] = 10000
+
+    # total tests
+    total_tests = 5000
 
     for idx in range(3):
         params_list[idx]['daily_outside_infection_p'] *= 2
         params_list[idx]['expected_contacts_per_day'] = interaction_matrix[idx][idx]
-    #     params_list[idx]['test_protocol_QFNR'] = 1 - (0.75 * 0.95)
-
-    # Initially 12.4 free + infectious individuals (UG only)
-    #     UG_0_initial_cases = 5.69
-    #     UG_1_initial_cases = 13.15
-    #     UG_2_initial_cases = 6.52
 
     # Set number of initial cases
     params_list[0]['initial_ID_prevalence'] = prop_init_cases_0
     params_list[1]['initial_ID_prevalence'] = prop_init_cases_1
-    params_list[2]['initial_ID_prevalence'] = 6.52 / params_list[2]['population_size']
+    params_list[2]['initial_ID_prevalence'] = 0.25
 
     num_tests_0 = prop_tests_0 * total_tests
     num_tests_1 = prop_tests_1 * total_tests
@@ -96,7 +90,7 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
     params_list[1]['test_population_fraction'] = num_tests_1 / params_list[1]['population_size']
     params_list[2]['test_population_fraction'] = num_tests_2 / params_list[2]['population_size']
 
-    group_names = ['UG (Greek, Athlete)', 'UG (other)', 'GS']  # , 'Faculty/Staff']
+    group_names = ['Pop. 1', 'Pop. 2', 'Pop. 3']
 
     # ==== Run simulations ====
 
@@ -132,3 +126,8 @@ if __name__ == "__main__":
     all_results = Parallel(n_jobs=18)(delayed(median_cases)(*all_params[i]) for i in range(len(all_params)))
 
     pickle.dump((all_params, all_results), open(base_dir + 'covid_params_results.p', 'wb'))
+
+    X = all_params
+    y = all_results
+    y_hat = ((-y - np.mean(-y)) / np.std(-y))[:, None]
+    pickle.dump((X, y_hat), open(base_dir + 'covid_X_y.p', 'wb'))
