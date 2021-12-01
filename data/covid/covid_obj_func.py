@@ -42,6 +42,7 @@ def get_trajectories(transmission_p, n, params_list, interaction_matrix, group_n
 
 
 def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_1,
+                 idx,
                  num_trajectories=10):
     """
 
@@ -49,6 +50,7 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
     :param prop_tests_1: float in [0, 1]. prop_tests_0 + prop_tests_1 <= 1.
     :param prop_init_cases_0: float in [0, 1]. Environment variable.
     :param prop_init_cases_1: float in [0, 1]. Environment variable.
+    :param idx. For tracking
     :param num_trajectories: int. Number of Monte Carlo trajectories to run.
     :return: float. Median number of cases.
     """
@@ -104,6 +106,8 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
         cases.append(list(
             get_cum_inf_trajectory(sim_run[0]) + get_cum_inf_trajectory(sim_run[1]) + get_cum_inf_trajectory(
                 sim_run[2]))[-1])
+
+    print(f"{idx} completed")
     return np.median(cases)
 
 
@@ -123,7 +127,7 @@ if __name__ == "__main__":
 
     all_params = cross_product(action_pairs, context_pairs)
 
-    all_results = Parallel(n_jobs=18)(delayed(median_cases)(*all_params[i]) for i in range(len(all_params)))
+    all_results = Parallel(n_jobs=18)(delayed(median_cases)(*all_params[i], i) for i in range(len(all_params)))
 
     pickle.dump((all_params, all_results), open(base_dir + 'covid_params_results.p', 'wb'))
 
