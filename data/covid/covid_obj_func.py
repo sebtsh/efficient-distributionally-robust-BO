@@ -12,7 +12,7 @@ from load_params import load_params
 sys.path.append(sys.path[0][:-len('data/covid/')])  # for imports to work
 print(sys.path)
 
-from core.utils import cross_product
+from core.utils import cross_product, construct_grid_1d
 
 
 base_dir = 'data/covid/'
@@ -42,7 +42,7 @@ def get_trajectories(transmission_p, n, params_list, interaction_matrix, group_n
 
 
 def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_1,
-                 idx,
+                 idx_track,
                  num_trajectories=10):
     """
 
@@ -50,7 +50,7 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
     :param prop_tests_1: float in [0, 1]. prop_tests_0 + prop_tests_1 <= 1.
     :param prop_init_cases_0: float in [0, 1]. Environment variable.
     :param prop_init_cases_1: float in [0, 1]. Environment variable.
-    :param idx. For tracking
+    :param idx_track. For tracking
     :param num_trajectories: int. Number of Monte Carlo trajectories to run.
     :return: float. Median number of cases.
     """
@@ -75,13 +75,13 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
     total_tests = 2000
 
     for idx in range(3):
-        params_list[idx]['daily_outside_infection_p'] *= 2
+        params_list[idx]['daily_outside_infection_p'] *= 0
         params_list[idx]['expected_contacts_per_day'] = interaction_matrix[idx][idx]
 
     # Set number of initial cases
     params_list[0]['initial_ID_prevalence'] = prop_init_cases_0
     params_list[1]['initial_ID_prevalence'] = prop_init_cases_1
-    params_list[2]['initial_ID_prevalence'] = 0.25
+    params_list[2]['initial_ID_prevalence'] = (1 - prop_init_cases_0 - prop_init_cases_1)
 
     num_tests_0 = prop_tests_0 * total_tests
     num_tests_1 = prop_tests_1 * total_tests
@@ -107,27 +107,49 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
             get_cum_inf_trajectory(sim_run[0]) + get_cum_inf_trajectory(sim_run[1]) + get_cum_inf_trajectory(
                 sim_run[2]))[-1])
 
-    print(f"{idx} completed")
+    print(f"{idx_track} completed")
     return np.median(cases)
 
 
 if __name__ == "__main__":
     action_density = 10
     context_density = 10
+    action_dims = 2
+    context_dims = 2
+    action_lowers = [0] * action_dims
+    action_uppers = [1] * action_dims
+    context_lowers = [0] * context_dims
+    context_uppers = [1] * context_dims
 
-    action_pairs = []
-    for i in np.linspace(0, 1, action_density):
-        for j in np.linspace(0, 1, action_density):
-            if i + j <= 1:
-                action_pairs.append([i, j])
-    action_pairs = np.array(action_pairs)
+    # action_pairs = []
+    # for i in np.linspace(0, 1, action_density):
+    #     for j in np.linspace(0, 1, action_density):
+    #         if i + j <= 1:
+    #             action_pairs.append([i, j])
+    # action_pairs = np.array(action_pairs)
 
-    context_pairs = cross_product(np.linspace(0, 1, context_density)[:, None],
-                                  np.linspace(0, 1, context_density)[:, None])
+    # Action space
+    action_points = construct_grid_1d(action_lowers[0], action_uppers[0], action_density)
+    for i in range(action_dims - 1):
+        action_points = cross_product(action_points,
+                                      construct_grid_1d(action_lowers[i + 1], action_uppers[i + 1],
+                                                        action_density))
 
-    all_params = cross_product(action_pairs, context_pairs)
+    # Some actions are invalid: we only keep those that x[0] + x[1] <= 1
+    action_points = np.delete(action_points, np.where(np.sum(action_points, axis=1) > 1), axis=0)
 
-    all_results = Parallel(n_jobs=18)(delayed(median_cases)(*all_params[i], i) for i in range(len(all_params)))
+    # Context space
+    context_points = construct_grid_1d(context_lowers[0], context_uppers[0], context_density)
+    for i in range(context_dims - 1):
+        context_points = cross_product(context_points,
+                                       construct_grid_1d(context_lowers[i + 1], context_uppers[i + 1],
+                                                         context_density))
+    # Some contexts are invalid: we only keep those that c[0] + c[1] <= 1
+    context_points = np.delete(context_points, np.where(np.sum(context_points, axis=1) > 1), axis=0)
+
+    all_params = cross_product(action_points, context_points)
+
+    all_results = Parallel(n_jobs=32)(delayed(median_cases)(*all_params[i], i) for i in range(len(all_params)))
 
     pickle.dump((all_params, all_results), open(base_dir + 'covid_params_results.p', 'wb'))
 
