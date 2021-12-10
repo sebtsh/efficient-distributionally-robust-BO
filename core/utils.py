@@ -149,6 +149,13 @@ def adversarial_expectation(f: TensorType,
     num_context = len(f)
     w = cp.Variable(num_context)
 
+    if divergence == 'modified_chi_squared':
+        f = np.around(f, 5)  # avoid numerical errors with ECOS convex solver
+
+    # print(f"f: {f}")
+    # print(f"ref_dist: {w_t}")
+    # print(f"epsilon: {epsilon}")
+
     objective = cp.Minimize(w @ f)
     if divergence == "MMD" or divergence == "MMD_approx":  # If we're calculating this, we want the true MMD
         constraints = [cp.sum(w) == 1.0,
@@ -210,6 +217,7 @@ def get_robust_expectation_and_action(action_points: TensorType,
     domain = cross_product(action_points, context_points)
 
     for i in range(num_actions):
+        #print(f"action: {i}")
         action_contexts = get_action_contexts(i, domain, num_context_points)
         if divergence == 'MMD' or divergence == 'MMD_approx':
             M = kernel(context_points)
