@@ -150,7 +150,8 @@ def adversarial_expectation(f: TensorType,
     w = cp.Variable(num_context)
 
     if divergence == 'modified_chi_squared':
-        f = np.around(f, 5)  # avoid numerical errors with ECOS convex solver
+        f = np.around(f, 4)  # avoid numerical errors with ECOS convex solver
+        w_t = np.around(w_t, 4)
 
     # print(f"f: {f}")
     # print(f"ref_dist: {w_t}")
@@ -175,10 +176,15 @@ def adversarial_expectation(f: TensorType,
 
     prob = cp.Problem(objective, constraints)
 
-    if cvx_opt_max_iters is None:
-        expectation = prob.solve(solver=cvx_solver, verbose=cvx_opt_verbose)
-    else:
-        expectation = prob.solve(solver=cvx_solver, max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
+    try:
+        if cvx_opt_max_iters is None:
+            expectation = prob.solve(solver=cvx_solver, verbose=cvx_opt_verbose)
+        else:
+            expectation = prob.solve(solver=cvx_solver, max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
+    except:
+        print("ECOS failed, trying SCS")
+        expectation = prob.solve(solver='SCS', max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
+
     return expectation, w.value
 
 
@@ -192,7 +198,7 @@ def get_robust_expectation_and_action(action_points: TensorType,
                                       obj_func: Callable = None,
                                       model: ModelOptModule = None,
                                       beta: float = None,
-                                      cvx_opt_max_iters: int = 100,
+                                      cvx_opt_max_iters: int = 50000,
                                       cvx_opt_verbose: bool = False
                                       ):
     """
