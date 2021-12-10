@@ -57,14 +57,15 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
     # ==== Set up parameters ====
 
     # Loading group params
-    ug_ga_params = load_params(base_dir + 'group_1_students_post_movein_private.yaml')[1]
-    ug_other_params = load_params(base_dir + 'group_2_students_post_movein_private.yaml')[1]
-    gs_params = load_params(base_dir + 'group_3_students_post_movein_private.yaml')[1]
-    params_list = [ug_ga_params.copy(), ug_other_params.copy(), gs_params.copy()]
+    params = load_params(base_dir + 'group_1_students_post_movein_private.yaml')[1]
+    #ug_ga_params = load_params(base_dir + 'group_1_students_post_movein_private.yaml')[1]
+    #ug_other_params = load_params(base_dir + 'group_2_students_post_movein_private.yaml')[1]
+    #gs_params = load_params(base_dir + 'group_3_students_post_movein_private.yaml')[1]
+    params_list = [params.copy(), params.copy(), params.copy()]
 
-    interaction_matrix = 10 * np.array([[4/5, 0, 0],
-                                        [0, 4/5, 0],
-                                        [0, 0, 4/5]])
+    interaction_matrix = 10 * np.array([[1, 0, 0],
+                                        [0, 1, 0],
+                                        [0, 0, 1]])
 
     # adding population size
     params_list[0]['population_size'] = 10000
@@ -72,16 +73,16 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
     params_list[2]['population_size'] = 10000
 
     # total tests
-    total_tests = 2000
+    total_tests = 5000
 
     for idx in range(3):
         params_list[idx]['daily_outside_infection_p'] *= 0
         params_list[idx]['expected_contacts_per_day'] = interaction_matrix[idx][idx]
 
     # Set number of initial cases
-    params_list[0]['initial_ID_prevalence'] = prop_init_cases_0
-    params_list[1]['initial_ID_prevalence'] = prop_init_cases_1
-    params_list[2]['initial_ID_prevalence'] = (1 - prop_init_cases_0 - prop_init_cases_1)
+    params_list[0]['initial_ID_prevalence'] = prop_init_cases_0 / 8
+    params_list[1]['initial_ID_prevalence'] = prop_init_cases_1 / 8
+    params_list[2]['initial_ID_prevalence'] = (1 - prop_init_cases_0 - prop_init_cases_1) / 8
 
     num_tests_0 = prop_tests_0 * total_tests
     num_tests_1 = prop_tests_1 * total_tests
