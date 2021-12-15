@@ -151,7 +151,8 @@ def adversarial_expectation(f: TensorType,
 
     if divergence == 'modified_chi_squared':
         f = np.around(f, 4)  # avoid numerical errors with ECOS convex solver
-        w_t = np.around(w_t, 4)
+
+    #print(f"ref dist: {w_t}")
 
     # print(f"f: {f}")
     # print(f"ref_dist: {w_t}")
@@ -223,7 +224,6 @@ def get_robust_expectation_and_action(action_points: TensorType,
     domain = cross_product(action_points, context_points)
 
     for i in range(num_actions):
-        #print(f"action: {i}")
         action_contexts = get_action_contexts(i, domain, num_context_points)
         if divergence == 'MMD' or divergence == 'MMD_approx':
             M = kernel(context_points)
@@ -243,6 +243,7 @@ def get_robust_expectation_and_action(action_points: TensorType,
                                                  cvx_opt_max_iters=cvx_opt_max_iters,
                                                  cvx_opt_verbose=cvx_opt_verbose)
         expectations.append(expectation)
+    print(expectations)
     max_idx = np.argmax(expectations)
     return np.max(expectations), action_points[max_idx:max_idx + 1]
 

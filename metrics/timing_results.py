@@ -61,7 +61,8 @@ def main(show_plots, figsize, dpi):
         plt.legend(fontsize=text_size - 2)
         plt.xticks(size=tick_size)
         plt.yticks(size=tick_size)
-        plt.savefig(result_dir + "{}-timing.png".format(divergence), figsize=figsize, dpi=dpi, bbox_inches='tight')
+        plt.savefig(result_dir + "{}-timing.pdf".format(divergence), figsize=figsize, dpi=dpi, bbox_inches='tight',
+                    format='pdf')
 
     if show_plots:
         plt.show()

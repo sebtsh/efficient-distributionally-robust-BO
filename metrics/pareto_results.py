@@ -76,4 +76,4 @@ def main(obj_func_name, divergence, context_density_per_dim, ref_mean, scs_max_i
     if show_plots:
         plt.show()
     fig = plt.gcf()
-    fig.savefig(result_dir + 'pareto' + ".png", figsize=figsize, dpi=dpi, bbox_inches='tight')
+    fig.savefig(result_dir + 'pareto' + ".pdf", figsize=figsize, dpi=dpi, bbox_inches='tight', format='pdf')

@@ -178,7 +178,8 @@ def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, s
                 plt.ylabel("Cumulative reward", size=text_size)
                 plt.xticks(size=tick_size)
                 plt.yticks(size=tick_size)
-            plt.savefig(sum_results_dir + f"wind-{divergence}-reward.png", figsize=figsize, dpi=dpi, bbox_inches='tight')
+            plt.savefig(sum_results_dir + f"wind-{divergence}-reward.pdf", figsize=figsize, dpi=dpi,
+                        bbox_inches='tight', format='pdf')
 
     if show_plots:
         plt.show()

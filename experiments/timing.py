@@ -30,7 +30,7 @@ def rand_func():
     uppers = [1] * dims
     action_grid_density = 20
     rand_func_num_points = 100
-    ls = 0.1
+    ls = 1
     obs_variance = 0.001
     is_optimizing_gp = False
     opt_max_iter = 10
@@ -40,22 +40,17 @@ def rand_func():
     ref_mean = 0.5
     ref_var = 0.05
     seed = 0
-    show_plots = False
 
 
 @ex.automain
 def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_points,
          dims, ls, obs_variance, is_optimizing_gp, num_bo_iters, opt_max_iter, num_init_points, beta_const,
-         ref_mean, ref_var, seed, show_plots, figsize=(15, 6), dpi=None):
+         ref_mean, ref_var, seed):
     result_dir = "runs/timing/"
     Path(result_dir).mkdir(parents=True, exist_ok=True)
-    context_grid_densities = np.arange(200, 1800, 200)
+    context_grid_densities = np.arange(1000, 10000, 1000)
     divergences = ['MMD', 'MMD_approx', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
-    color_dict = {'GP-UCB': '#d7263d',
-                  'DRBOGeneral': '#fbb13c',
-                  'DRBOWorstCaseSens': '#26c485',
-                  'DRBOMidApprox': '#00a6ed'}
 
     for divergence in divergences:
         timing_dict = {}
@@ -65,9 +60,9 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
                 print("Timing for {}-{}-{}".format(divergence, acq_name, context_grid_density))
                 np.random.seed(seed)
 
-                f_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls] * dims)
+                f_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls / context_grid_density] * dims)
                 if divergence == 'MMD' or divergence == 'MMD_approx':
-                    mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls])  # 1d for now
+                    mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls / context_grid_density])  # 1d for now
                 else:
                     mmd_kernel = None
 
@@ -97,7 +92,6 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
 
                 # Distribution generating functions
                 ref_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)
-                # true_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, true_mean, true_var)
                 true_dist_func = lambda x: get_discrete_uniform_dist(context_points)
                 margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
                 margin_func = lambda x: margin  # Constant margin for now
@@ -119,16 +113,4 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
                                                                                            optimize_gp=is_optimizing_gp)
                 average_acq_times.append(average_acq_time)
             timing_dict[acq_name] = np.array(average_acq_times)
-        # Plots
-        # fig = plt.figure(figsize=figsize, dpi=dpi)
-        # for acquisition in acquisitions:
-        #     plt.plot(context_grid_densities, timing_dict[acquisition], label=acquisition, color=color_dict[acquisition])
-        # plt.title("{} average acquisition time in seconds".format(divergence))
-        # plt.xlabel("Size of context set")
-        # plt.ylabel("Seconds")
-        # plt.legend()
-        # fig.savefig(result_dir + "{}-timing.png".format(divergence))
         pickle.dump(timing_dict, open(result_dir + f"timing_dict-{divergence}.p", "wb"))
-
-    if show_plots:
-        plt.show()

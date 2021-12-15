@@ -142,6 +142,7 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, be
                     axs[i].tick_params(labelsize=tick_size)
 
             fig.tight_layout()
-            fig.savefig(sum_results_dir + f"rand-{divergence}-regret.png", figsize=figsize, dpi=dpi, bbox_inches='tight')
+            fig.savefig(sum_results_dir + f"rand-{divergence}-regret.pdf", figsize=figsize, dpi=dpi,
+                        bbox_inches='tight', format='pdf')
     if show_plots:
         plt.show()
