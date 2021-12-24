@@ -30,7 +30,7 @@ def main(show_plots, figsize, dpi):
 
     result_dir = "runs/timing/"
     Path(result_dir).mkdir(parents=True, exist_ok=True)
-    context_grid_densities = np.arange(200, 1800, 200)
+    context_grid_densities = np.arange(300, 3000, 300)
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
     color_dict = {'GP-UCB': '#d7263d',
