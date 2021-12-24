@@ -18,7 +18,7 @@ from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist, get_discrete_uniform_dist, \
-    get_margin, get_robust_expectation_and_action
+    get_margin, get_robust_expectation_and_action, normalize_dist
 from metrics.plotting import plot_robust_regret
 
 matplotlib.use('Agg')
@@ -31,21 +31,21 @@ ex.observers.append(FileStorageObserver('../runs'))
 def covid():
     obj_func_name = 'covid'
     action_dims = 2
-    context_dims = 2
+    context_dims = 4
     action_lowers = [0] * action_dims
     action_uppers = [1] * action_dims
     context_lowers = [0] * context_dims
     context_uppers = [1] * context_dims
     action_density_per_dim = 10
     context_density_per_dim = 10
-    ls = [0.05, 0.05, 0.05, 0.05]
+    ls = [0.5, 0.5, 0.5, 0.5]
     obs_variance = 0.001
     is_optimizing_gp = False
     opt_max_iter = 10
     num_bo_iters = 1000
     num_init_points = 10
     beta_const = 2
-    ref_var = 0.01
+    ref_var = 0.02
     seed = 0
 
 
@@ -60,8 +60,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
     Path(result_dir).mkdir(parents=True, exist_ok=True)
 
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
-    ref_means = np.array([[0., 0.], [0., 1.], [1., 0.]])
+    acquisitions = ['GP-UCB', 'DRBOWorstCaseSens', 'DRBOMidApprox']
+    ref_means = np.array([[0., 0., 0., 0.], [1., 0., 0., 0.]])
     ref_cov = ref_var * np.eye(context_dims)
 
     all_dims = action_dims + context_dims
@@ -91,7 +91,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                                construct_grid_1d(context_lowers[i + 1], context_uppers[i + 1],
                                                                  context_density_per_dim))
             # Some contexts are invalid: we only keep those that c[0] + c[1] <= 1
-            context_points = np.delete(context_points, np.where(np.sum(context_points, axis=1) > 1), axis=0)
+            context_points = np.delete(context_points, np.where(np.sum(context_points[:, :2], axis=1) > 1), axis=0)
             search_points = cross_product(action_points, context_points)
 
             # Warning: move kernels into inner loop if optimizing kernel
@@ -105,7 +105,11 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
             obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, seed)
 
             # Distribution generating functions
-            ref_dist_func = lambda x: get_discrete_normal_dist(context_points, ref_mean, ref_cov)
+            if divergence == 'modified_chi_squared':
+                ref_dist_func = lambda x: normalize_dist(get_discrete_normal_dist(context_points, ref_mean, ref_cov) +
+                                                         get_discrete_uniform_dist(context_points)/5)
+            else:
+                ref_dist_func = lambda x: get_discrete_normal_dist(context_points, ref_mean, ref_cov)
             true_dist_func = lambda x: get_discrete_uniform_dist(context_points)
             margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
             margin_func = lambda x: margin  # Constant margin for now
