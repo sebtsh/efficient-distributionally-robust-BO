@@ -135,7 +135,7 @@ if __name__ == "__main__":
     valid_samples = np.delete(scaled_samples, np.where(np.sum(scaled_samples[:, :2], axis=1) > 1), axis=0)
     valid_samples = np.delete(valid_samples, np.where(np.sum(valid_samples[:, 2:4], axis=1) > 1), axis=0)
     all_params = valid_samples
-    print(f"Length of all_params: {all_params}")
+    print(f"Length of all_params: {len(all_params)}")
 
     # # Action space
     # action_points = construct_grid_1d(action_lowers[0], action_uppers[0], action_density)
