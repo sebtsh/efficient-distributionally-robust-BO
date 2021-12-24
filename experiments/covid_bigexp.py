@@ -38,7 +38,7 @@ def covid():
     context_uppers = [1] * context_dims
     action_density_per_dim = 10
     context_density_per_dim = 10
-    ls = [0.5, 0.5, 0.5, 0.5]
+    ls = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
     obs_variance = 0.001
     is_optimizing_gp = False
     opt_max_iter = 10
