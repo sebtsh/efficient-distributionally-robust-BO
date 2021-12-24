@@ -267,7 +267,7 @@ def get_margin(ref_dist: TensorType,
     elif divergence == 'TV':
         return TV(ref_dist, true_dist)
     elif divergence == 'modified_chi_squared':
-        return modified_chi_squared(ref_dist, true_dist)
+        return modified_chi_squared(true_dist, ref_dist)
     else:
         raise Exception("Wrong divergence passed to get_margin")
 
@@ -513,3 +513,7 @@ def get_discrete_dist_1d(arr, context_points):
         if ctx in dic.keys():
             dist[i] = dic[ctx]
     return dist / len(arr)
+
+
+def normalize_dist(dist):
+    return dist / np.sum(dist)

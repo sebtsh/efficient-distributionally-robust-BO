@@ -12,13 +12,13 @@ from sacred.observers import FileStorageObserver
 sys.path.append(sys.path[0][:-len('experiments')])  # for imports to work
 print(sys.path)
 
-from core.acquisitions import get_acquisition, get_beta_linear_schedule
+from core.acquisitions import get_acquisition
 from core.models import GPRModule
 from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist_1d, get_discrete_uniform_dist, \
-    get_margin, get_robust_expectation_and_action
+    get_margin, get_robust_expectation_and_action, normalize_dist
 from metrics.plotting import plot_function_2d, plot_bo_points_2d, plot_robust_regret, plot_gp_2d
 
 matplotlib.use('Agg')
@@ -56,8 +56,8 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
     Path(plot_dir).mkdir(parents=True, exist_ok=True)
     Path(result_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['MMD', 'MMD_approx', 'TV', 'modified_chi_squared']
-    ref_means = [0, 0.25, 0.5]
+    divergences = ['modified_chi_squared']
+    ref_means = [0, 0.5]
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
 
     for divergence in divergences:
@@ -81,7 +81,11 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
             obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, rand_func_num_points, seed)
 
             # Distribution generating functions
-            ref_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)
+            if divergence == 'modified_chi_squared':  # Add small uniform everywhere for numeric reasons
+                ref_dist_func = lambda x: normalize_dist(get_discrete_normal_dist_1d(context_points, ref_mean, ref_var) +
+                                                         get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)/10)
+            else:
+                ref_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)
             true_dist_func = lambda x: get_discrete_uniform_dist(context_points)
             margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
             margin_func = lambda x: margin  # Constant margin for now

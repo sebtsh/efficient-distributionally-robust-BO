@@ -15,7 +15,8 @@ from core.models import GPRModule
 from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
-from core.utils import construct_grid_1d, cross_product, get_margin, get_robust_expectation_and_action
+from core.utils import construct_grid_1d, cross_product, get_margin, get_robust_expectation_and_action, \
+    normalize_dist, get_discrete_uniform_dist
 from metrics.plotting import plot_function_2d, plot_bo_points_2d, plot_robust_regret, plot_gp_2d, \
     plot_cumulative_rewards
 
@@ -98,7 +99,10 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
         power_sequence = power_in_months[month][:, None]
 
         # Distribution generating functions
-        ref_dist_func = lambda x: ref_dist
+        if divergence == 'modified_chi_squared':  # Add small uniform everywhere for numeric reasons
+            ref_dist_func = lambda x: normalize_dist(ref_dist + get_discrete_uniform_dist(context_points)/10)
+        else:
+            ref_dist_func = lambda x: ref_dist
         true_dist = true_dist_in_months[month]
         true_dist_func = lambda x: true_dist
         margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
