@@ -117,7 +117,7 @@ if __name__ == "__main__":
     action_density = 10
     context_density = 10
     action_dims = 2
-    context_dims = 4
+    context_dims = 3
     action_lowers = [0] * action_dims
     action_uppers = [1] * action_dims
     context_lowers = [0] * context_dims
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     dims = action_dims + context_dims
     lowers = action_lowers + context_lowers
     uppers = action_uppers + context_uppers
-    num_samples = 2 ** 16
+    num_samples = 2 ** 13
 
     sampler = qmc.Sobol(d=dims, scramble=False)
     sample = sampler.random(num_samples)
