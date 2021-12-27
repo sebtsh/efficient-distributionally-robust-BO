@@ -126,7 +126,7 @@ if __name__ == "__main__":
     dims = action_dims + context_dims
     lowers = action_lowers + context_lowers
     uppers = action_uppers + context_uppers
-    num_samples = 2 ** 13
+    num_samples = 2 ** 14
 
     sampler = qmc.Sobol(d=dims, scramble=False)
     sample = sampler.random(num_samples)
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     #
     # all_params = cross_product(action_points, context_points)
 
-    all_results = Parallel(n_jobs=32)(delayed(median_cases)(*all_params[i], i) for i in range(len(all_params)))
+    all_results = Parallel(n_jobs=32)(delayed(median_cases)(*all_params[i], 0, i) for i in range(len(all_params)))
 
     pickle.dump((all_params, all_results), open(base_dir + 'covid_params_results.p', 'wb'))
 
