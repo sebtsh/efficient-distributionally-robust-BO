@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
+from time import process_time
 
 sys.path.append(sys.path[0][:-len('experiments')])  # for imports to work
 print(sys.path)
@@ -38,11 +39,11 @@ def covid():
     context_uppers = [1] * context_dims
     action_density_per_dim = 10
     context_density_per_dim = 10
-    ls = [0.5, 0.5, 0.5, 0.5, 0.5]
+    ls = [0.2, 0.2, 0.2, 0.2, 0.2]
     obs_variance = 0.001
     is_optimizing_gp = False
     opt_max_iter = 10
-    num_bo_iters = 1000
+    num_bo_iters = 2500
     num_init_points = 10
     beta_const = 2
     ref_var = 0.02
@@ -61,7 +62,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
 
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOWorstCaseSens', 'DRBOMidApprox']
-    ref_means = np.array([[0., 0., 0., 0.], [1., 0., 0., 0.]])
+    ref_means = np.array([[0., 0., 0.], [1., 0., 0.]])
     ref_cov = ref_var * np.eye(context_dims)
 
     all_dims = action_dims + context_dims
@@ -115,6 +116,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
             margin_func = lambda x: margin  # Constant margin for now
 
             print("Calculating robust expectation")
+            start = process_time()
             robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
                                                                                   context_points=context_points,
                                                                                   kernel=mmd_kernel,
@@ -123,6 +125,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                                                                   divergence=divergence,
                                                                                   epsilon=margin_func(0),
                                                                                   obj_func=obj_func)
+            end = process_time()
+            print(f"Robust expectation took {end-start} seconds")
 
             for acq_name in acquisitions:
                 file_name = "{}-{}-{}-seed{}-beta{}-refmean{}".format(obj_func_name,
