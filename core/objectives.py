@@ -3,7 +3,9 @@ from collections.abc import Callable
 import numpy as np
 import pickle
 import tensorflow as tf
+from marchantia.core.synth_func import create_synth_funcs
 from trieste.space import Box
+
 
 from core.utils import discretize_Box
 
@@ -39,6 +41,20 @@ def get_obj_func(name, lowers, uppers, kernel, rand_func_num_points=100, seed=0)
     elif name == 'covid':
         X, y = pickle.load(open("data/covid/covid_X_y.p", "rb"))
         return get_obj_func_from_samples(kernel, X, y)
+    elif name == 'plant':
+        NH3pH_leaf_max_area_func, _, _ = create_synth_funcs(params='NH3pH')
+
+        def NH3pH_wrapper(vals):
+            X = np.zeros(vals.shape)
+            X[:, 0] = vals[:, 1] * 30000
+            X[:, 1] = 2.5 + vals[:, 0] * (6.5 - 2.5)
+
+            mean, _ = NH3pH_leaf_max_area_func(X)
+            leaf_mean = 67.2466342112483
+            leaf_std = 59.347376136036964
+            return (mean - leaf_mean) / leaf_std
+
+        return NH3pH_wrapper
     else:
         raise Exception("Incorrect name passed to get_obj_func")
 
