@@ -100,7 +100,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
 
         # Distribution generating functions
         if divergence == 'modified_chi_squared':  # Add small uniform everywhere for numeric reasons
-            ref_dist_func = lambda x: normalize_dist(ref_dist + get_discrete_uniform_dist(context_points)/10)
+            ref_dist_func = lambda x: normalize_dist(ref_dist + get_discrete_uniform_dist(context_points)/100)
         else:
             ref_dist_func = lambda x: ref_dist
         true_dist = true_dist_in_months[month]

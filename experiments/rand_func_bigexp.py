@@ -83,7 +83,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
             # Distribution generating functions
             if divergence == 'modified_chi_squared':  # Add small uniform everywhere for numeric reasons
                 ref_dist_func = lambda x: normalize_dist(get_discrete_normal_dist_1d(context_points, ref_mean, ref_var) +
-                                                         get_discrete_uniform_dist(context_points)/10)
+                                                         get_discrete_uniform_dist(context_points)/100)
             else:
                 ref_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)
             true_dist_func = lambda x: get_discrete_uniform_dist(context_points)
