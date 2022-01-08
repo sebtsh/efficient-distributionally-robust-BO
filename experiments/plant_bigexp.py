@@ -82,17 +82,12 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                               construct_grid_1d(action_lowers[i + 1], action_uppers[i + 1],
                                                                 action_density_per_dim))
 
-            # Some actions are invalid: we only keep those that x[0] + x[1] <= 1
-            action_points = np.delete(action_points, np.where(np.sum(action_points, axis=1) > 1), axis=0)
-
             # Context space
             context_points = construct_grid_1d(context_lowers[0], context_uppers[0], context_density_per_dim)
             for i in range(context_dims - 1):
                 context_points = cross_product(context_points,
                                                construct_grid_1d(context_lowers[i + 1], context_uppers[i + 1],
                                                                  context_density_per_dim))
-            # Some contexts are invalid: we only keep those that c[0] + c[1] <= 1
-            context_points = np.delete(context_points, np.where(np.sum(context_points[:, :2], axis=1) > 1), axis=0)
             search_points = cross_product(action_points, context_points)
 
             # Warning: move kernels into inner loop if optimizing kernel

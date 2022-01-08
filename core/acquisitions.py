@@ -8,7 +8,7 @@ from trieste.type import TensorType
 
 from core.models import ModelOptModule
 from core.utils import get_upper_lower_bounds, get_robust_expectation_and_action, worst_case_sens, \
-    get_cubic_approx_func, cross_product, get_action_contexts, get_mid_approx_func
+    get_cubic_approx_func, cross_product, get_action_contexts, get_mid_approx_func, get_robust_exp_action_with_cvxprob
 from core.fourier_features import sample_gp_SqExp
 
 
@@ -71,7 +71,8 @@ class Acquisition(ABC):
                 ref_dist: TensorType,
                 divergence: str,
                 kernel: Kernel,
-                epsilon: float):
+                epsilon: float,
+                cvx_prob: Callable):
         """
         Takes in models and a search space and returns an array of shape (b, d) that represents a batch selection
         of next points to query.
@@ -83,6 +84,7 @@ class Acquisition(ABC):
         :param divergence: str, 'MMD', 'TV' or 'modified_chi_squared''
         :param kernel: gpflow kernel
         :param epsilon: margin
+        :param cvx_prob: function wrapper created by create_cvx_problem
         :return: array of shape (b, d)
         """
         pass
@@ -107,16 +109,25 @@ class DRBOGeneral(Acquisition):
                 ref_dist: TensorType,
                 divergence: str,
                 kernel: Kernel,
-                epsilon: float):
-        robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
-                                                                              context_points=context_points,
-                                                                              kernel=kernel,
-                                                                              fvals_source='ucb',
-                                                                              ref_dist=ref_dist,
-                                                                              divergence=divergence,
-                                                                              epsilon=epsilon,
-                                                                              model=model,
-                                                                              beta=self.beta(t))
+                epsilon: float,
+                cvx_prob: Callable):
+        if cvx_prob is None:
+            _, robust_action = get_robust_expectation_and_action(action_points=action_points,
+                                                                 context_points=context_points,
+                                                                 kernel=kernel,
+                                                                 fvals_source='ucb',
+                                                                 ref_dist=ref_dist,
+                                                                 divergence=divergence,
+                                                                 epsilon=epsilon,
+                                                                 model=model,
+                                                                 beta=self.beta(t))
+        else:
+            _, robust_action = get_robust_exp_action_with_cvxprob(action_points=action_points,
+                                                                  context_points=context_points,
+                                                                  fvals_source='ucb',
+                                                                  cvx_prob=cvx_prob,
+                                                                  model=model,
+                                                                  beta=self.beta(t))
         return robust_action
 
 

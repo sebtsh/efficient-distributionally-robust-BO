@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import tensorflow as tf
 import cvxpy as cp
@@ -152,7 +153,7 @@ def adversarial_expectation(f: TensorType,
     if divergence == 'modified_chi_squared':
         f = np.around(f, 4)  # avoid numerical errors with ECOS convex solver
 
-    #print(f"ref dist: {w_t}")
+    # print(f"ref dist: {w_t}")
 
     # print(f"f: {f}")
     # print(f"ref_dist: {w_t}")
@@ -242,6 +243,45 @@ def get_robust_expectation_and_action(action_points: TensorType,
                                                  divergence=divergence,
                                                  cvx_opt_max_iters=cvx_opt_max_iters,
                                                  cvx_opt_verbose=cvx_opt_verbose)
+        expectations.append(expectation)
+    print(expectations)
+    max_idx = np.argmax(expectations)
+    return np.max(expectations), action_points[max_idx:max_idx + 1]
+
+
+def get_robust_exp_action_with_cvxprob(action_points: TensorType,
+                                       context_points: TensorType,
+                                       fvals_source: str,
+                                       cvx_prob: Callable,
+                                       obj_func: Callable = None,
+                                       model: ModelOptModule = None,
+                                       beta: float = None
+                                       ):
+    """
+    Calculates max_x inf_Q E_{c~Q}[f(x, c)]
+    :param action_points: Array of shape (num_actions, d_x)
+    :param context_points: Array of shape (|C|, d_c)
+    :param fvals_source: Either 'obj_func' or 'ucb'
+    :param cvx_prob: function wrapper created by create_cvx_problem
+    :param obj_func: objective function
+    :param model: ModelOptModule
+    :param beta: Beta for UCB scores. Only used if fvals_source is 'ucb'
+    :return: tuple (float, array of shape (1, d_x)). Value of robust action, and robust action
+    """
+    num_actions = len(action_points)
+    num_context_points = len(context_points)
+    expectations = []
+    domain = cross_product(action_points, context_points)
+
+    for i in range(num_actions):
+        action_contexts = get_action_contexts(i, domain, num_context_points)
+        if fvals_source == 'obj_func':
+            f = np.squeeze(obj_func(action_contexts), axis=-1)
+        elif fvals_source == 'ucb':
+            f, _ = get_upper_lower_bounds(model, action_contexts, beta)
+        else:
+            raise Exception("Invalid fvals_source given")
+        expectation, _ = cvx_prob(f)
         expectations.append(expectation)
     print(expectations)
     max_idx = np.argmax(expectations)
@@ -517,3 +557,43 @@ def get_discrete_dist_1d(arr, context_points):
 
 def normalize_dist(dist):
     return dist / np.sum(dist)
+
+
+def get_ordering(arr):
+    enum = list(enumerate(arr))
+    enum.sort(key=lambda x: x[1])
+    return np.array(enum)[:, 0].astype(np.int32)
+
+
+def create_cvx_problem(num_context_points,
+                       M,
+                       w_t,
+                       epsilon,
+                       divergence):
+    w = cp.Variable(num_context_points)
+    g = cp.Parameter(num_context_points)
+    objective = cp.Minimize(w @ g)
+    if divergence == "MMD" or divergence == "MMD_approx":  # If we're calculating this, we want the true MMD
+        constraints = [cp.sum(w) == 1.0,
+                       w >= 0.,
+                       cp.quad_form(w - w_t, M) <= epsilon ** 2]
+    elif divergence == "TV":
+        constraints = [cp.sum(w) == 1.0,
+                       w >= 0.,
+                       cp.norm(w - w_t, 1) <= epsilon]
+    elif divergence == "modified_chi_squared":
+        phi = lambda x: 0.5 * ((x - 1) ** 2)
+        constraints = [cp.sum(w) == 1.0,
+                       w >= 0.,
+                       w_t @ phi(w / w_t) <= epsilon]
+    else:
+        raise Exception("Incorrect divergence given")
+    prob = cp.Problem(objective, constraints)
+
+    def wrapper(f):
+        g.value = f
+        value = prob.solve(warm_start=True)
+        sol = w.value
+        return value, sol
+
+    return wrapper

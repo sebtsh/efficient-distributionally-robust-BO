@@ -19,7 +19,7 @@ from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist, get_discrete_uniform_dist, \
-    get_margin, get_robust_expectation_and_action, normalize_dist
+    get_margin, get_robust_exp_action_with_cvxprob, normalize_dist, create_cvx_problem
 from metrics.plotting import plot_robust_regret
 
 matplotlib.use('Agg')
@@ -60,8 +60,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
     Path(plot_dir).mkdir(parents=True, exist_ok=True)
     Path(result_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
-    acquisitions = ['GP-UCB', 'DRBOWorstCaseSens', 'DRBOMidApprox']
+    divergences = ['MMD_approx']
+    acquisitions = ['DRBOGeneral']
     ref_means = np.array([[0., 0., 0.], [1., 0., 0.]])
     ref_cov = ref_var * np.eye(context_dims)
 
@@ -99,8 +99,10 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
             f_kernel = gpf.kernels.SquaredExponential(lengthscales=lengthscales)
             if divergence == 'MMD' or divergence == 'MMD_approx':
                 mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=context_lengthscales)
+                M = mmd_kernel(context_points)
             else:
                 mmd_kernel = None
+                M = None
 
             # Get objective function
             obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, seed)
@@ -108,25 +110,29 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
             # Distribution generating functions
             if divergence == 'modified_chi_squared':
                 ref_dist_func = lambda x: normalize_dist(get_discrete_normal_dist(context_points, ref_mean, ref_cov) +
-                                                         get_discrete_uniform_dist(context_points)/5)
+                                                         get_discrete_uniform_dist(context_points) / 5)
             else:
                 ref_dist_func = lambda x: get_discrete_normal_dist(context_points, ref_mean, ref_cov)
             true_dist_func = lambda x: get_discrete_uniform_dist(context_points)
             margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
             margin_func = lambda x: margin  # Constant margin for now
 
+            # Create cvx problem
+            cvx_prob = create_cvx_problem(num_context_points=len(context_points),
+                                          M=M,
+                                          w_t=ref_dist_func(0),
+                                          epsilon=margin,
+                                          divergence=divergence)
+
             print("Calculating robust expectation")
             start = process_time()
-            robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
-                                                                                  context_points=context_points,
-                                                                                  kernel=mmd_kernel,
-                                                                                  fvals_source='obj_func',
-                                                                                  ref_dist=ref_dist_func(0),
-                                                                                  divergence=divergence,
-                                                                                  epsilon=margin_func(0),
-                                                                                  obj_func=obj_func)
+            robust_expectation, robust_action = get_robust_exp_action_with_cvxprob(action_points=action_points,
+                                                                                   context_points=context_points,
+                                                                                   fvals_source='obj_func',
+                                                                                   cvx_prob=cvx_prob,
+                                                                                   obj_func=obj_func)
             end = process_time()
-            print(f"Robust expectation took {end-start} seconds")
+            print(f"Robust expectation took {end - start} seconds")
 
             for acq_name in acquisitions:
                 file_name = "{}-{}-{}-seed{}-beta{}-refmean{}".format(obj_func_name,
@@ -169,7 +175,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                                                                            margin_func=margin_func,
                                                                                            divergence=divergence,
                                                                                            mmd_kernel=mmd_kernel,
-                                                                                           optimize_gp=is_optimizing_gp)
+                                                                                           optimize_gp=is_optimizing_gp,
+                                                                                           cvx_prob=cvx_prob)
                 print("Final dataset: {}".format(final_dataset))
                 print("Average acquisition time in seconds: {}".format(average_acq_time))
                 # Plots

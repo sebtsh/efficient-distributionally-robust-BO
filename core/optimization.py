@@ -25,7 +25,8 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
                                divergence: str,
                                mmd_kernel: Kernel,
                                optimize_gp: bool = True,
-                               custom_sequence: Iterable = None):
+                               custom_sequence: Iterable = None,
+                               cvx_prob: Callable = None):
     """
     Main distributionally robust Bayesian optimization loop.
     :param model:
@@ -45,6 +46,7 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
     :param optimize_gp:
     :param custom_sequence: array of shape (num_bo_iters, d_c) that contains the context variables the environment
     provides at time t indexed by t.
+    :param cvx_prob: function wrapper created by create_cvx_problem
     :return:
     """
     dataset = init_dataset
@@ -65,7 +67,8 @@ def bayes_opt_loop_dist_robust(model: ModelOptModule,
                              ref_dist=ref_dist,
                              divergence=divergence,
                              kernel=mmd_kernel,
-                             epsilon=epsilon)  # TensorType of shape (1, d_x)
+                             epsilon=epsilon,
+                             cvx_prob=cvx_prob)  # TensorType of shape (1, d_x)
         end = process_time()
         times.append(end - start)  # Time taken to acquire in seconds
         if action is None:  # Early termination signal
