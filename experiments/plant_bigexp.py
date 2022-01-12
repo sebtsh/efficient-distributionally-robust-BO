@@ -98,7 +98,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                 mmd_kernel = None
 
             # Get objective function
-            obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, seed)
+            obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel)
 
             # Distribution generating functions
             if divergence == 'modified_chi_squared':

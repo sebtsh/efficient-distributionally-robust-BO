@@ -29,7 +29,7 @@ def standardize_objective(obj_func: Callable,
     return lambda x: (obj_func(x) - mean) / std
 
 
-def get_obj_func(name, lowers, uppers, kernel, rand_func_num_points=100, seed=0):
+def get_obj_func(name, lowers, uppers, kernel, context_dims, rand_func_num_points=100, seed=0):
     if name == 'rand_func':
         return sample_GP_prior(kernel, lowers, uppers, rand_func_num_points, seed)
     elif name == 'wind':
@@ -40,7 +40,12 @@ def get_obj_func(name, lowers, uppers, kernel, rand_func_num_points=100, seed=0)
         return get_obj_func_from_samples(kernel, X, y)
     elif name == 'covid':
         X, y = pickle.load(open("data/covid/covid_X_y.p", "rb"))
-        return get_obj_func_from_samples(kernel, X, y)
+        func = get_obj_func_from_samples(kernel, X, y)
+        if context_dims == 3:
+            return func
+        elif context_dims == 4:
+            return lambda x: func(x[:, :3])
+
     elif name == 'plant':
         NH3pH_leaf_max_area_func, _, _ = create_synth_funcs(params='NH3pH')
 

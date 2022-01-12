@@ -21,7 +21,7 @@ def default():
 
 
 @ex.automain
-def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plots, mode, figsize=(8, 6), dpi=200):
+def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plots, mode, figsize=(10, 6), dpi=200):
     # dir = "runs/" + obj_func_name + "/"
     # result_dir = dir + "indiv_results/"
     # out_dir = dir + "summary_results/"
@@ -30,16 +30,16 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
     plt.rcParams.update({
         "text.usetex": True,
         "font.family": "sans-serif"})
-    text_size = 26
+    text_size = 28
     tick_size = 20
 
     sum_results_dir = "runs/" + obj_func_name + "/summarized_results/"
     indiv_results_dir = "runs/" + obj_func_name + "/indiv_results/"
     Path(sum_results_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
-    ref_means = np.array([[0., 0.], [0.25, 0.25], [0.5, 0.5]])
+    divergences = ['MMD_approx']
+    acquisitions = ['GP-UCB', 'DRBOWorstCaseSens', 'DRBOMidApprox']
+    ref_means = np.array([[0., 0., 0.], [1., 0., 0.]])
     x = np.arange(num_bo_iters)
     color_dict = {'GP-UCB': '#d7263d',
                   'DRBOGeneral': '#fbb13c',
@@ -105,11 +105,11 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
         for divergence in divergences:
             fig, axs = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
 
-            for i, ref_mean in enumerate(np.array([[0., 0.], [1., 0.]])):
-                if np.allclose(ref_mean, [0., 0.]):
-                    ref_mean_name = "(0, 0)"
-                elif np.allclose(ref_mean, [1., 0.]):
-                    ref_mean_name = "(1, 0)"
+            for i, ref_mean in enumerate(ref_means):
+                if np.allclose(ref_mean, [0., 0., 0.]):
+                    ref_mean_name = "(0, 0, 0)"
+                elif np.allclose(ref_mean, [1., 0., 0]):
+                    ref_mean_name = "(1, 0, 0)"
 
                 plot_name = f"Ref. mean = {ref_mean_name}"
                 axs[i].set_title(plot_name, size=text_size)
@@ -150,6 +150,52 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
 
             fig.tight_layout()
             fig.savefig(sum_results_dir + f"covid-{divergence}-regret.pdf", figsize=figsize, dpi=dpi,
+                        bbox_inches='tight', format='pdf')
+    elif mode == 'imm':
+        for divergence in divergences:
+            print(f"Divergence: {divergence}")
+            fig, axs = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
+            for i, ref_mean in enumerate(ref_means):
+                if np.allclose(ref_mean, [0., 0., 0.]):
+                    ref_mean_name = "(0, 0, 0)"
+                elif np.allclose(ref_mean, [1., 0., 0]):
+                    ref_mean_name = "(1, 0, 0)"
+                plot_name = f"Ref. mean = {ref_mean_name}"
+                axs[i].set_title(plot_name, size=text_size)
+                for acquisition in acquisitions:
+                    print(f"Acquisition: {acquisition}")
+                    color = color_dict[acquisition]
+                    all_regrets = np.zeros((num_seeds, num_bo_iters))
+                    all_times = []
+                    for seed in range(num_seeds):
+                        file_name = "{}-{}-{}-seed{}-beta{}-refmean{}.p".format(obj_func_name,
+                                                                                divergence,
+                                                                                acquisition,
+                                                                                seed,
+                                                                                beta,
+                                                                                ref_mean)
+                        regrets, cumulative_regrets, average_acq_time, query_points = pickle.load(
+                            open(indiv_results_dir + file_name, "rb"))
+                        # cut out initial points
+                        regrets = np.array(regrets[num_init_points:])
+                        all_regrets[seed] = regrets
+                        all_times.append(average_acq_time)
+                    mean_regrets = np.mean(all_regrets, axis=0)
+                    std_err_regrets = np.std(all_regrets, axis=0) / np.sqrt(num_seeds)
+                    print(f"Average mean regrets last 10: {np.mean(mean_regrets[-10:])}")
+
+                    # Immediate regret
+                    axs[i].plot(x, mean_regrets, label=acquisition, color=color)
+                    axs[i].fill_between(x, mean_regrets - std_err_regrets,
+                                        mean_regrets + std_err_regrets,
+                                        alpha=0.2, color=color)
+                    #axs[i].legend(fontsize=20)
+                    axs[i].set_xlabel("Timesteps", size=text_size)
+                    axs[i].set_ylabel("Immediate robust regret", size=text_size)
+                    axs[i].tick_params(labelsize=tick_size)
+
+            fig.tight_layout()
+            fig.savefig(sum_results_dir + f"{obj_func_name}-{divergence}-immregret.pdf", figsize=figsize, dpi=dpi,
                         bbox_inches='tight', format='pdf')
     if show_plots:
         plt.show()

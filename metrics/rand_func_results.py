@@ -21,17 +21,15 @@ def default():
 
 
 @ex.automain
-def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, beta, mode, figsize=(8, 6), dpi=200):
+def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, beta, mode, figsize=(10, 6), dpi=200):
     plt.rcParams.update({
         "text.usetex": True,
         "font.family": "sans-serif"})
-    text_size = 26
+    text_size = 28
     tick_size = 20
 
     Path("runs/results").mkdir(parents=True, exist_ok=True)
-    divergences = ['modified_chi_squared']
-    #divergences = ['MMD_approx']
-
+    divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
     x = np.arange(num_bo_iters)
     color_dict = {'GP-UCB': '#d7263d',
@@ -100,7 +98,7 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, be
                                                                                  acquisition,
                                                                                  np.mean(all_times)))
                 fig.savefig(sum_results_dir + plot_name + "-regret.png")
-    if mode == 'cumu':
+    elif mode == 'cumu':
         for divergence in divergences:
             fig, axs = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
 
@@ -143,6 +141,46 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, be
 
             fig.tight_layout()
             fig.savefig(sum_results_dir + f"rand-{divergence}-regret.pdf", figsize=figsize, dpi=dpi,
+                        bbox_inches='tight', format='pdf')
+    elif mode == 'imm':
+        for divergence in divergences:
+            fig, axs = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
+
+            for i, ref_mean in enumerate([0, 0.5]):
+                plot_name = f"Ref. mean = {ref_mean}"
+                axs[i].set_title(plot_name, size=text_size)
+                for acquisition in acquisitions:
+                    color = color_dict[acquisition]
+                    all_regrets = np.zeros((num_seeds, num_bo_iters))
+                    all_times = []
+                    for seed in range(num_seeds):
+                        file_name = "{}-{}-{}-seed{}-beta{}-refmean{}.p".format(obj_func_name,
+                                                                                divergence,
+                                                                                acquisition,
+                                                                                seed,
+                                                                                beta,
+                                                                                ref_mean)
+                        regrets, cumulative_regrets, average_acq_time, query_points = pickle.load(
+                            open(result_dir + file_name, "rb"))
+                        # cut out initial points
+                        regrets = np.array(regrets[num_init_points:])
+                        all_regrets[seed] = regrets
+                        all_times.append(average_acq_time)
+                    mean_regrets = np.mean(all_regrets, axis=0)
+                    std_err_regrets = np.std(all_regrets, axis=0) / np.sqrt(num_seeds)
+
+                    # Immediate regret
+                    axs[i].plot(x, mean_regrets, label=acquisition, color=color)
+                    axs[i].fill_between(x, mean_regrets - std_err_regrets,
+                                        mean_regrets + std_err_regrets,
+                                        alpha=0.2, color=color)
+                    #axs[i].legend(fontsize=20)
+                    axs[i].set_xlabel("Timesteps", size=text_size)
+                    axs[i].set_ylabel("Immediate robust regret", size=text_size)
+                    axs[i].tick_params(labelsize=tick_size)
+
+            fig.tight_layout()
+            fig.savefig(sum_results_dir + f"rand-{divergence}-immregret.pdf", figsize=figsize, dpi=dpi,
                         bbox_inches='tight', format='pdf')
     if show_plots:
         plt.show()

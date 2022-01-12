@@ -57,7 +57,7 @@ def main(show_plots, figsize, dpi):
                      color=color_dict[acquisition], marker=marker_dict[acquisition])
         # plt.title("{} average acquisition time in seconds".format(divergence))
         plt.xlabel("Size of context set", size=text_size)
-        plt.ylabel("Time elapsed (seconds)", size=text_size)
+        plt.ylabel("Mean CPU time (seconds)", size=text_size)
         plt.legend(fontsize=text_size - 2)
         plt.xticks(size=tick_size)
         plt.yticks(size=tick_size)

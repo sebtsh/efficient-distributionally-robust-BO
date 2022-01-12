@@ -10,7 +10,7 @@ from sacred.observers import FileStorageObserver
 sys.path.append(sys.path[0][:-len('experiments')])  # for imports to work
 print(sys.path)
 
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 
 ex = Experiment("Pareto")
 ex.observers.append(FileStorageObserver('../runs'))
@@ -65,15 +65,16 @@ def main(obj_func_name, divergence, context_density_per_dim, ref_mean, scs_max_i
     truncated_average_timings = np.mean(all_truncated_timings, axis=0)
     print("Average timings: {}".format(truncated_average_timings))
 
+    plt.figure(figsize=figsize, dpi=dpi)
     plt.scatter(truncated_average_timings, truncated_average_error, label='Truncated convex opt.', color='#fbb13c')
     plt.scatter([wcs_average_timing], [wcs_average_error], label='\\textsc{MinimaxApprox}', color='#00a6ed')
 
-    plt.xlabel("Mean time elapsed (seconds)", size=text_size)
+    plt.xlabel("Mean CPU time (seconds)", size=text_size)
     plt.ylabel("Mean approximation error", size=text_size)
-    plt.legend(fontsize=text_size - 4)
+    plt.legend(fontsize=text_size - 2)
     plt.xticks(size=tick_size)
     plt.yticks(size=tick_size)
-    if show_plots:
-        plt.show()
-    fig = plt.gcf()
-    fig.savefig(result_dir + 'pareto' + ".pdf", figsize=figsize, dpi=dpi, bbox_inches='tight', format='pdf')
+    # if show_plots:
+    #     plt.show()
+    # fig = plt.gcf()
+    plt.savefig(result_dir + 'pareto' + ".pdf", figsize=figsize, dpi=dpi, bbox_inches='tight', format='pdf')

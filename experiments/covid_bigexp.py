@@ -19,7 +19,7 @@ from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist, get_discrete_uniform_dist, \
-    get_margin, get_robust_exp_action_with_cvxprob, normalize_dist, create_cvx_problem
+    get_margin, get_robust_exp_action_with_cvxprob, normalize_dist, create_cvx_problem, get_robust_expectation_and_action
 from metrics.plotting import plot_robust_regret
 
 matplotlib.use('Agg')
@@ -93,6 +93,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                                                  context_density_per_dim))
             # Some contexts are invalid: we only keep those that c[0] + c[1] <= 1
             context_points = np.delete(context_points, np.where(np.sum(context_points[:, :2], axis=1) > 1), axis=0)
+            print(f"Size of context set: {len(context_points)}")
             search_points = cross_product(action_points, context_points)
 
             # Warning: move kernels into inner loop if optimizing kernel
@@ -105,7 +106,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                 M = None
 
             # Get objective function
-            obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, seed)
+            obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, context_dims)
 
             # Distribution generating functions
             if divergence == 'modified_chi_squared':

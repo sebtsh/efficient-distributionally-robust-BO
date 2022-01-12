@@ -21,7 +21,7 @@ def default():
 
 
 @ex.automain
-def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plots, mode, figsize=(8, 6), dpi=200):
+def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plots, mode, figsize=(10, 6), dpi=200):
     # dir = "runs/" + obj_func_name + "/"
     # result_dir = dir + "indiv_results/"
     # out_dir = dir + "summary_results/"
@@ -30,7 +30,7 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
     plt.rcParams.update({
         "text.usetex": True,
         "font.family": "sans-serif"})
-    text_size = 26
+    text_size = 28
     tick_size = 20
 
     sum_results_dir = "runs/" + obj_func_name + "/summarized_results/"
@@ -103,14 +103,16 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
                 fig.savefig(sum_results_dir + plot_name + "-regret.png")
     elif mode == 'cumu':
         for divergence in divergences:
+            print(f"Divergence: {divergence}")
             fig, axs = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
 
             for i, ref_mean in enumerate(ref_means):
-                ref_mean_name = ref_mean
+                ref_mean_name = int(ref_mean[0])
 
                 plot_name = f"Ref. mean = {ref_mean_name}"
                 axs[i].set_title(plot_name, size=text_size)
                 for acquisition in acquisitions:
+                    print(f"Acquisition: {acquisition}")
                     color = color_dict[acquisition]
                     all_regrets = np.zeros((num_seeds, num_bo_iters))
                     all_cumu_regrets = np.zeros((num_seeds, num_bo_iters))
@@ -125,6 +127,7 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
                         regrets, cumulative_regrets, average_acq_time, query_points = pickle.load(
                             open(indiv_results_dir + file_name, "rb"))
                         # cut out initial points
+                        print(query_points[-5:])
                         regrets = np.array(regrets[num_init_points:])
                         base_cumulative_regret = cumulative_regrets[num_init_points - 1]
                         cumulative_regrets = np.array(

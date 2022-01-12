@@ -22,19 +22,19 @@ def default():
 
 
 @ex.automain
-def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, show_plots, mode, figsize=(8, 6),
+def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, show_plots, mode, figsize=(10, 6),
          dpi=200):
     plt.rcParams.update({
         "text.usetex": True,
         "font.family": "sans-serif"})
-    text_size = 26
+    text_size = 28
     tick_size = 20
 
     sum_results_dir = "runs/" + obj_func_name + "/summarized_results/"
     indiv_results_dir = "runs/" + obj_func_name + "/indiv_results/"
     Path(sum_results_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['modified_chi_squared']
+    divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
 
     color_dict = {'GP-UCB': '#d7263d',
