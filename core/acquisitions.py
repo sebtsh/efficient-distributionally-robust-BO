@@ -2,14 +2,12 @@ from abc import ABC, abstractmethod
 from typing import Callable
 
 import numpy as np
-from numpy.random import default_rng
 from gpflow.kernels import Kernel
 from trieste.type import TensorType
 
 from core.models import ModelOptModule
 from core.utils import get_upper_lower_bounds, get_robust_expectation_and_action, worst_case_sens, \
-    get_cubic_approx_func, cross_product, get_action_contexts, get_mid_approx_func, get_robust_exp_action_with_cvxprob
-from core.fourier_features import sample_gp_SqExp
+    cross_product, get_action_contexts, get_mid_approx_func, get_robust_exp_action_with_cvxprob
 
 
 def get_beta_linear_schedule(start_beta, end_beta, steps):
@@ -40,16 +38,8 @@ def get_acquisition(acq_name,
         return DRBOGeneral(**args)
     elif acq_name == 'DRBOWorstCaseSens':
         return DRBOWorstCaseSens(**args)
-    elif acq_name == 'DRBOCubicApprox':
-        return DRBOCubicApprox(**args)
-    elif acq_name == 'WorstCaseSensTS':
-        return WorstCaseSensTS(**args)
-    elif acq_name == 'CubicApproxTS':
-        return CubicApproxTS(**args)
     elif acq_name == 'DRBOMidApprox':
         return DRBOMidApprox(**args)
-    elif acq_name == 'MidApproxTS':
-        return MidApproxTS(**args)
     else:
         raise Exception('Acquisition name is wrong')
 
@@ -154,7 +144,7 @@ class DRBOWorstCaseSens(Acquisition):
                 divergence: str,
                 kernel: Kernel,
                 epsilon: float,
-                cvxprob: Callable):
+                cvx_prob: Callable):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         adv_lower_bounds = []
@@ -210,7 +200,7 @@ class DRBOMidApprox(Acquisition):
                 divergence: str,
                 kernel: Kernel,
                 epsilon: float,
-                cvxprob: Callable):
+                cvx_prob: Callable):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         adv_approxs = []
@@ -259,7 +249,7 @@ class GPUCBStochastic(Acquisition):
                 divergence: str,
                 kernel: Kernel,
                 epsilon: float,
-                cvxprob: Callable):
+                cvx_prob: Callable):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         max_val = -np.infty
