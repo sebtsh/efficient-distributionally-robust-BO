@@ -37,8 +37,8 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
     indiv_results_dir = "runs/" + obj_func_name + "/indiv_results/"
     Path(sum_results_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['MMD_approx']
-    acquisitions = ['GP-UCB', 'DRBOWorstCaseSens', 'DRBOMidApprox']
+    divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
     ref_means = np.array([[0., 0., 0.], [1., 0., 0.]])
     x = np.arange(num_bo_iters)
     color_dict = {'GP-UCB': '#d7263d',
@@ -107,9 +107,9 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
 
             for i, ref_mean in enumerate(ref_means):
                 if np.allclose(ref_mean, [0., 0., 0.]):
-                    ref_mean_name = "(0, 0, 0)"
+                    ref_mean_name = "$[0, 0, 0]^\\top$"
                 elif np.allclose(ref_mean, [1., 0., 0]):
-                    ref_mean_name = "(1, 0, 0)"
+                    ref_mean_name = "$[1, 0, 0]^\\top$"
 
                 plot_name = f"Ref. mean = {ref_mean_name}"
                 axs[i].set_title(plot_name, size=text_size)
@@ -138,13 +138,17 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
                     mean_cumu_regrets = np.mean(all_cumu_regrets, axis=0)
                     std_err_cumu_regrets = np.std(all_cumu_regrets, axis=0) / np.sqrt(num_seeds)
 
+                    mean_regrets = np.mean(all_regrets, axis=0)
+                    print(f"{acquisition} Mean regrets last 5: {np.mean(mean_regrets[-10:])}")
+                    print(f"{divergence} {acquisition} Mean acquisition time: {np.mean(all_times)}")
+
                     # Cumulative regret
                     axs[i].plot(x, mean_cumu_regrets, label=acquisition, color=color)
                     axs[i].fill_between(x, mean_cumu_regrets - std_err_cumu_regrets,
                                         mean_cumu_regrets + std_err_cumu_regrets,
                                         alpha=0.2, color=color)
                     # axs[i].legend(fontsize=20)
-                    axs[i].set_xlabel("Timesteps", size=text_size)
+                    axs[i].set_xlabel("Time", size=text_size)
                     axs[i].set_ylabel("Cumulative robust regret", size=text_size)
                     axs[i].tick_params(labelsize=tick_size)
 
@@ -157,9 +161,9 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
             fig, axs = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
             for i, ref_mean in enumerate(ref_means):
                 if np.allclose(ref_mean, [0., 0., 0.]):
-                    ref_mean_name = "(0, 0, 0)"
+                    ref_mean_name = "$[0, 0, 0]^\\top$"
                 elif np.allclose(ref_mean, [1., 0., 0]):
-                    ref_mean_name = "(1, 0, 0)"
+                    ref_mean_name = "$[1, 0, 0]^\\top$"
                 plot_name = f"Ref. mean = {ref_mean_name}"
                 axs[i].set_title(plot_name, size=text_size)
                 for acquisition in acquisitions:
@@ -190,7 +194,7 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
                                         mean_regrets + std_err_regrets,
                                         alpha=0.2, color=color)
                     #axs[i].legend(fontsize=20)
-                    axs[i].set_xlabel("Timesteps", size=text_size)
+                    axs[i].set_xlabel("Time", size=text_size)
                     axs[i].set_ylabel("Immediate robust regret", size=text_size)
                     axs[i].tick_params(labelsize=tick_size)
 

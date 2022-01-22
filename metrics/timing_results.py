@@ -1,3 +1,4 @@
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
@@ -37,9 +38,9 @@ def main(show_plots, figsize, dpi):
                   'DRBOGeneral': '#fbb13c',
                   'DRBOWorstCaseSens': '#26c485',
                   'DRBOMidApprox': '#00a6ed'}
-    marker_dict = {'GP-UCB': '8',
-                   'DRBOGeneral': 's',
-                   'DRBOWorstCaseSens': 'p',
+    marker_dict = {'GP-UCB': 's',
+                   'DRBOGeneral': '8',
+                   'DRBOWorstCaseSens': 'x',
                    'DRBOMidApprox': 'P'}
 
     acq_name_dict = {'GP-UCB': 'GP-UCB',
@@ -54,7 +55,7 @@ def main(show_plots, figsize, dpi):
         plt.figure(figsize=figsize, dpi=dpi)
         for acquisition in acquisitions:
             plt.plot(context_grid_densities, timing_dict[acquisition], label="\\textsc{" + acq_name_dict[acquisition] + "}",
-                     color=color_dict[acquisition], marker=marker_dict[acquisition])
+                     color=matplotlib.colors.to_rgba(color_dict[acquisition], 0.7), marker=marker_dict[acquisition], markersize=20)
         # plt.title("{} average acquisition time in seconds".format(divergence))
         plt.xlabel("Size of context set", size=text_size)
         plt.ylabel("Mean CPU time (seconds)", size=text_size)

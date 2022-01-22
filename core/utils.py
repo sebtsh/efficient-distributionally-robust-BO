@@ -185,7 +185,10 @@ def adversarial_expectation(f: TensorType,
             expectation = prob.solve(solver=cvx_solver, max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
     except:
         print("ECOS failed, trying SCS")
-        expectation = prob.solve(solver='SCS', max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
+        if cvx_opt_max_iters is None:
+            expectation = prob.solve(solver='SCS', verbose=cvx_opt_verbose)
+        else:
+            expectation = prob.solve(solver='SCS', max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
 
     return expectation, w.value
 
@@ -244,7 +247,6 @@ def get_robust_expectation_and_action(action_points: TensorType,
                                                  cvx_opt_max_iters=cvx_opt_max_iters,
                                                  cvx_opt_verbose=cvx_opt_verbose)
         expectations.append(expectation)
-    print(expectations)
     max_idx = np.argmax(expectations)
     return np.max(expectations), action_points[max_idx:max_idx + 1]
 
@@ -597,3 +599,75 @@ def create_cvx_problem(num_context_points,
         return value, sol
 
     return wrapper
+
+
+def cumu_robust_regrets(obj_func,
+                        query_points,
+                        action_points,
+                        context_points,
+                        kernel,
+                        ref_dist_func,
+                        margin_func,
+                        divergence,
+                        robust_expectation_action):
+    action_dims = action_points.shape[-1]
+    regrets = []
+    cumulative_regrets = []
+    if divergence == 'MMD' or divergence == 'MMD_approx':
+        M = kernel(context_points)
+    else:
+        M = None
+    for t in range(len(query_points)):
+        domain = cross_product(query_points[t:t + 1, 0:action_dims], context_points)
+        f = obj_func(domain)
+        query_expectation, w = adversarial_expectation(f=f, M=M, w_t=ref_dist_func(t), epsilon=margin_func(t),
+                                                       divergence=divergence)
+        if robust_expectation_action is None:
+            robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
+                                                                                  context_points=context_points,
+                                                                                  kernel=kernel,
+                                                                                  fvals_source='obj_func',
+                                                                                  ref_dist=ref_dist_func(t),
+                                                                                  divergence=divergence,
+                                                                                  epsilon=margin_func(t),
+                                                                                  obj_func=obj_func)
+        else:
+            robust_expectation, robust_action = robust_expectation_action  # Warning: assumes constant functions
+        regrets.append(robust_expectation - query_expectation)
+        cumulative_regrets.append(np.sum(regrets))
+    return cumulative_regrets
+
+
+def imm_robust_regret(obj_func,
+                        query_points,
+                        action_points,
+                        context_points,
+                        kernel,
+                        ref_dist_func,
+                        margin_func,
+                        divergence,
+                        robust_expectation_action):
+    action_dims = action_points.shape[-1]
+    regrets = []
+    if divergence == 'MMD' or divergence == 'MMD_approx':
+        M = kernel(context_points)
+    else:
+        M = None
+    for t in range(len(query_points)-5, len(query_points)):
+        domain = cross_product(query_points[t:t + 1, 0:action_dims], context_points)
+        f = obj_func(domain)
+        query_expectation, w = adversarial_expectation(f=f, M=M, w_t=ref_dist_func(t), epsilon=margin_func(t),
+                                                       divergence=divergence)
+        if robust_expectation_action is None:
+            robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
+                                                                                  context_points=context_points,
+                                                                                  kernel=kernel,
+                                                                                  fvals_source='obj_func',
+                                                                                  ref_dist=ref_dist_func(t),
+                                                                                  divergence=divergence,
+                                                                                  epsilon=margin_func(t),
+                                                                                  obj_func=obj_func)
+        else:
+            robust_expectation, robust_action = robust_expectation_action  # Warning: assumes constant functions
+        regrets.append(robust_expectation - query_expectation)
+    return np.mean(regrets)

@@ -66,8 +66,8 @@ def main(obj_func_name, divergence, context_density_per_dim, ref_mean, scs_max_i
     print("Average timings: {}".format(truncated_average_timings))
 
     plt.figure(figsize=figsize, dpi=dpi)
-    plt.scatter(truncated_average_timings, truncated_average_error, label='Truncated convex opt.', color='#fbb13c')
-    plt.scatter([wcs_average_timing], [wcs_average_error], label='\\textsc{MinimaxApprox}', color='#00a6ed')
+    plt.scatter(truncated_average_timings, truncated_average_error, s=128, label='Truncated convex opt.', color='#fbb13c')
+    plt.scatter([wcs_average_timing], [wcs_average_error], label='\\textsc{MinimaxApprox}', color='#00a6ed', s=128)
 
     plt.xlabel("Mean CPU time (seconds)", size=text_size)
     plt.ylabel("Mean approximation error", size=text_size)

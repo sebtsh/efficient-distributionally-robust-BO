@@ -153,7 +153,8 @@ class DRBOWorstCaseSens(Acquisition):
                 ref_dist: TensorType,
                 divergence: str,
                 kernel: Kernel,
-                epsilon: float):
+                epsilon: float,
+                cvxprob: Callable):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         adv_lower_bounds = []
@@ -186,181 +187,6 @@ class DRBOWorstCaseSens(Acquisition):
         return action_points[max_idx:max_idx + 1]
 
 
-class WorstCaseSensTS(Acquisition):
-    """
-    Uses worst case sensitivity (Gotoh et. al., 2020) as a fast upper bound for the distributionally robust
-    maximin problem.
-    """
-
-    def __init__(self,
-                 beta: Callable,
-                 divergence: str,  # "TV", "modified_chi_squared"
-                 **kwargs):
-        super().__init__()
-        self.beta = beta
-        self.divergence = divergence
-
-    def acquire(self,
-                model: ModelOptModule,
-                action_points: TensorType,
-                context_points: TensorType,
-                t: int,
-                ref_dist: TensorType,
-                divergence: str,
-                kernel: Kernel,
-                epsilon: float,
-                rff: bool = True):
-        num_action_points = len(action_points)
-        num_context_points = len(context_points)
-        adv_lower_bounds = []
-        domain = cross_product(action_points, context_points)
-
-        if rff:
-            all_fvals = sample_gp_SqExp(domain=domain,
-                                        dataset=model.dataset,
-                                        lengthscales=model.gp.kernel.lengthscales.numpy(),
-                                        sigma=model.gp.likelihood.variance.numpy())
-        else:
-            fmean, fvar = model.predict_f(domain, full_cov=True)
-            rng = default_rng()
-            all_fvals = rng.multivariate_normal(np.squeeze(fmean),
-                                                np.squeeze(fvar))  # (num_action_points * num_context_points)
-        for i in range(num_action_points):
-            fvals = all_fvals[i * num_context_points:(i + 1) * num_context_points]
-            expected_fvals = np.sum(ref_dist * fvals)  # SAA
-
-            worst_case_sensitivity = worst_case_sens(fvals=fvals,
-                                                     p=ref_dist,
-                                                     context_points=context_points,
-                                                     kernel=kernel,
-                                                     divergence=divergence)
-
-            if divergence == 'MMD' or 'MMD_approx':
-                sens_factor = epsilon  # might be square root epsilon for others
-            elif divergence == 'TV':
-                sens_factor = epsilon
-            elif divergence == 'modified_chi_squared':
-                sens_factor = np.sqrt(epsilon)
-            else:
-                raise Exception("Invalid divergence passed to WorstCaseSensTS")
-
-            adv_lower_bound = expected_fvals - (sens_factor * worst_case_sensitivity)
-            adv_lower_bounds.append(adv_lower_bound)
-        max_idx = np.argmax(adv_lower_bounds)
-        return action_points[max_idx:max_idx + 1]
-
-
-class DRBOCubicApprox(Acquisition):
-    """
-    Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
-    approximation for large epsilon.
-    """
-
-    def __init__(self,
-                 beta: Callable,
-                 divergence: str,
-                 **kwargs):
-        super().__init__()
-        self.beta = beta
-        self.divergence = divergence
-
-    def acquire(self,
-                model: ModelOptModule,
-                action_points: TensorType,
-                context_points: TensorType,
-                t: int,
-                ref_dist: TensorType,
-                divergence: str,
-                kernel: Kernel,
-                epsilon: float):
-        num_action_points = len(action_points)
-        num_context_points = len(context_points)
-        adv_approxs = []
-        domain = cross_product(action_points, context_points)
-
-        for i in range(num_action_points):
-            action_contexts = get_action_contexts(i, domain, num_context_points)
-            fvals, _ = get_upper_lower_bounds(model, action_contexts, self.beta(t))  # (num_context_points, )
-
-            worst_case_sensitivity = worst_case_sens(fvals=fvals,
-                                                     p=ref_dist,
-                                                     context_points=context_points,
-                                                     kernel=kernel,
-                                                     divergence=divergence)
-
-            V_approx_func = get_cubic_approx_func(context_points=context_points,
-                                                  fvals=fvals,
-                                                  kernel=kernel,
-                                                  ref_dist=ref_dist,
-                                                  worst_case_sensitivity=worst_case_sensitivity,
-                                                  divergence=divergence)
-
-            adv_approxs.append(V_approx_func(epsilon))
-        max_idx = np.argmax(adv_approxs)
-        return action_points[max_idx:max_idx + 1]
-
-
-class CubicApproxTS(Acquisition):
-    """
-    Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
-    approximation for large epsilon.
-    """
-
-    def __init__(self,
-                 beta: Callable,
-                 divergence: str,
-                 **kwargs):
-        super().__init__()
-        self.beta = beta
-        self.divergence = divergence
-
-    def acquire(self,
-                model: ModelOptModule,
-                action_points: TensorType,
-                context_points: TensorType,
-                t: int,
-                ref_dist: TensorType,
-                divergence: str,
-                kernel: Kernel,
-                epsilon: float,
-                rff: bool = True):
-        num_action_points = len(action_points)
-        num_context_points = len(context_points)
-        adv_approxs = []
-        domain = cross_product(action_points, context_points)
-
-        if rff:
-            all_fvals = sample_gp_SqExp(domain=domain,
-                                        dataset=model.dataset,
-                                        lengthscales=model.gp.kernel.lengthscales.numpy(),
-                                        sigma=model.gp.likelihood.variance.numpy())
-        else:
-            fmean, fvar = model.predict_f(domain, full_cov=True)
-            rng = default_rng()
-            all_fvals = rng.multivariate_normal(np.squeeze(fmean),
-                                                np.squeeze(fvar))  # (num_action_points * num_context_points)
-
-        for i in range(num_action_points):
-            fvals = all_fvals[i * num_context_points:(i + 1) * num_context_points]
-
-            worst_case_sensitivity = worst_case_sens(fvals=fvals,
-                                                     p=ref_dist,
-                                                     context_points=context_points,
-                                                     kernel=kernel,
-                                                     divergence=divergence)
-
-            V_approx_func = get_cubic_approx_func(context_points=context_points,
-                                                  fvals=fvals,
-                                                  kernel=kernel,
-                                                  ref_dist=ref_dist,
-                                                  worst_case_sensitivity=worst_case_sensitivity,
-                                                  divergence=divergence)
-
-            adv_approxs.append(V_approx_func(epsilon))
-        max_idx = np.argmax(adv_approxs)
-        return action_points[max_idx:max_idx + 1]
-
-
 class DRBOMidApprox(Acquisition):
     """
     Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
@@ -383,7 +209,8 @@ class DRBOMidApprox(Acquisition):
                 ref_dist: TensorType,
                 divergence: str,
                 kernel: Kernel,
-                epsilon: float):
+                epsilon: float,
+                cvxprob: Callable):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         adv_approxs = []
@@ -392,67 +219,6 @@ class DRBOMidApprox(Acquisition):
         for i in range(num_action_points):
             action_contexts = get_action_contexts(i, domain, num_context_points)
             fvals, _ = get_upper_lower_bounds(model, action_contexts, self.beta(t))  # (num_context_points, )
-
-            worst_case_sensitivity = worst_case_sens(fvals=fvals,
-                                                     p=ref_dist,
-                                                     context_points=context_points,
-                                                     kernel=kernel,
-                                                     divergence=divergence)
-
-            V_approx_func = get_mid_approx_func(context_points=context_points,
-                                                fvals=fvals,
-                                                kernel=kernel,
-                                                ref_dist=ref_dist,
-                                                worst_case_sensitivity=worst_case_sensitivity,
-                                                divergence=divergence)
-
-            adv_approxs.append(V_approx_func(epsilon))
-        max_idx = np.argmax(adv_approxs)
-        return action_points[max_idx:max_idx + 1]
-
-
-class MidApproxTS(Acquisition):
-    """
-    Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
-    approximation for large epsilon.
-    """
-
-    def __init__(self,
-                 beta: Callable,
-                 divergence: str,
-                 **kwargs):
-        super().__init__()
-        self.beta = beta
-        self.divergence = divergence
-
-    def acquire(self,
-                model: ModelOptModule,
-                action_points: TensorType,
-                context_points: TensorType,
-                t: int,
-                ref_dist: TensorType,
-                divergence: str,
-                kernel: Kernel,
-                epsilon: float,
-                rff: bool = True):
-        num_action_points = len(action_points)
-        num_context_points = len(context_points)
-        adv_approxs = []
-        domain = cross_product(action_points, context_points)
-
-        if rff:
-            all_fvals = sample_gp_SqExp(domain=domain,
-                                        dataset=model.dataset,
-                                        lengthscales=model.gp.kernel.lengthscales.numpy(),
-                                        sigma=model.gp.likelihood.variance.numpy())
-        else:
-            fmean, fvar = model.predict_f(domain, full_cov=True)
-            rng = default_rng()
-            all_fvals = rng.multivariate_normal(np.squeeze(fmean),
-                                                np.squeeze(fvar))  # (num_action_points * num_context_points)
-
-        for i in range(num_action_points):
-            fvals = all_fvals[i * num_context_points:(i + 1) * num_context_points]
 
             worst_case_sensitivity = worst_case_sens(fvals=fvals,
                                                      p=ref_dist,
@@ -492,7 +258,8 @@ class GPUCBStochastic(Acquisition):
                 ref_dist: TensorType,
                 divergence: str,
                 kernel: Kernel,
-                epsilon: float):
+                epsilon: float,
+                cvxprob: Callable):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         max_val = -np.infty

@@ -78,7 +78,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                 mmd_kernel = None
 
             # Get objective function
-            obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, rand_func_num_points, seed)
+            obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, 1, rand_func_num_points, seed)
 
             # Distribution generating functions
             if divergence == 'modified_chi_squared':  # Add small uniform everywhere for numeric reasons
