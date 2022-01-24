@@ -95,7 +95,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
             mmd_kernel = None
 
         # Get objective function
-        obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel)
+        obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, context_dims)
         power_sequence = power_in_months[month][:, None]
 
         # Distribution generating functions
