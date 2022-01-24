@@ -62,7 +62,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
 
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
-    ref_means = np.array([[0.]])
+    ref_means = np.array([[0.], [1.]])
     ref_cov = ref_var * np.eye(context_dims)
 
     all_dims = action_dims + context_dims
