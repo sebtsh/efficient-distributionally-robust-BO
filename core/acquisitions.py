@@ -10,16 +10,6 @@ from core.utils import get_upper_lower_bounds, get_robust_expectation_and_action
     cross_product, get_action_contexts, get_mid_approx_func, get_robust_exp_action_with_cvxprob
 
 
-def get_beta_linear_schedule(start_beta, end_beta, steps):
-    def beta(t):
-        if t >= steps:
-            return end_beta
-        else:
-            return start_beta - t * ((start_beta - end_beta) / steps)
-
-    return beta
-
-
 def get_acquisition(acq_name,
                     beta: Callable,
                     divergence: str):

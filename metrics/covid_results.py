@@ -107,9 +107,9 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
 
             for i, ref_mean in enumerate(ref_means):
                 if np.allclose(ref_mean, [0., 0., 0.]):
-                    ref_mean_name = "$[0, 0, 0]^\\top$"
+                    ref_mean_name = "$(0, 0, 0)^\\top$"
                 elif np.allclose(ref_mean, [1., 0., 0]):
-                    ref_mean_name = "$[1, 0, 0]^\\top$"
+                    ref_mean_name = "$(1, 0, 0)^\\top$"
 
                 plot_name = f"Ref. mean = {ref_mean_name}"
                 axs[i].set_title(plot_name, size=text_size)
