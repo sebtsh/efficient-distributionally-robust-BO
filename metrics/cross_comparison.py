@@ -38,7 +38,7 @@ if obj_func_name == 'rand_func':
     num_seeds = 10
     ref_means = [0, 0.5]
 elif obj_func_name == 'plant':
-    num_bo_iters = 400
+    num_bo_iters = 1000
     num_seeds = 5
     ref_means = np.array([[0.], [1.]])
 
@@ -196,7 +196,7 @@ if regret_type == 'cumu':
                                     mean_regrets + std_err_regrets,
                                     alpha=0.2, color=color)
             axs[i].legend(fontsize=20)
-            axs[i].set_xlabel("Time", size=text_size)
+            axs[i].set_xlabel("Iterations", size=text_size)
             axs[i].set_ylabel("Cumulative robust regret", size=text_size)
             axs[i].tick_params(labelsize=tick_size)
 

@@ -148,7 +148,7 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
                                         mean_cumu_regrets + std_err_cumu_regrets,
                                         alpha=0.2, color=color)
                     # axs[i].legend(fontsize=20)
-                    axs[i].set_xlabel("Time", size=text_size)
+                    axs[i].set_xlabel("Iterations", size=text_size)
                     axs[i].set_ylabel("Cumulative robust regret", size=text_size)
                     axs[i].tick_params(labelsize=tick_size)
 
@@ -194,7 +194,7 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
                                         mean_regrets + std_err_regrets,
                                         alpha=0.2, color=color)
                     #axs[i].legend(fontsize=20)
-                    axs[i].set_xlabel("Time", size=text_size)
+                    axs[i].set_xlabel("Iterations", size=text_size)
                     axs[i].set_ylabel("Immediate robust regret", size=text_size)
                     axs[i].tick_params(labelsize=tick_size)
 

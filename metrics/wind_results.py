@@ -174,7 +174,7 @@ def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, s
                                  mean_cumu_rewards + std_err_cumu_rewards,
                                  alpha=0.2, color=color)
                 plt.legend(fontsize=text_size-2)
-                plt.xlabel("Time", size=text_size)
+                plt.xlabel("Iterations", size=text_size)
                 plt.ylabel("Cumulative reward", size=text_size)
                 plt.xticks(size=tick_size)
                 plt.yticks(size=tick_size)

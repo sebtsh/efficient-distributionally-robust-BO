@@ -12,7 +12,7 @@ ex.observers.append(FileStorageObserver('../runs'))
 @ex.named_config
 def default():
     obj_func_name = 'rand_func'
-    num_bo_iters = 400
+    num_bo_iters = 1000
     num_init_points = 10
     num_seeds = 10
     show_plots = False
@@ -135,7 +135,7 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, be
                                         mean_cumu_regrets + std_err_cumu_regrets,
                                         alpha=0.2, color=color)
                     #axs[i].legend(fontsize=20)
-                    axs[i].set_xlabel("Timesteps", size=text_size)
+                    axs[i].set_xlabel("Iterations", size=text_size)
                     axs[i].set_ylabel("Cumulative robust regret", size=text_size)
                     axs[i].tick_params(labelsize=tick_size)
 
@@ -175,7 +175,7 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, be
                                         mean_regrets + std_err_regrets,
                                         alpha=0.2, color=color)
                     #axs[i].legend(fontsize=20)
-                    axs[i].set_xlabel("Timesteps", size=text_size)
+                    axs[i].set_xlabel("Iterations", size=text_size)
                     axs[i].set_ylabel("Immediate robust regret", size=text_size)
                     axs[i].tick_params(labelsize=tick_size)
 
