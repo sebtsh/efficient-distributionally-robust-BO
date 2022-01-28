@@ -13,6 +13,7 @@ pip install -r requirements.txt
 
 ## Running experiments
 The experiment scripts may be found in the `experiments` folder, and may be run with the following commands in the main directory.
+
 Random functions from GP prior:
 ```shell
 python experiments/rand_func_bigexp.py with default
