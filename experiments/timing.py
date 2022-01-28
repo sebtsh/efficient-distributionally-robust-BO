@@ -67,7 +67,7 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
                     mmd_kernel = None
 
                 # Get objective function
-                obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, rand_func_num_points, seed)
+                obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, 1, rand_func_num_points, seed)
 
                 # Action space (1d for now)
                 action_points = construct_grid_1d(lowers[0], uppers[0], action_grid_density)

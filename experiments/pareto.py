@@ -65,7 +65,7 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
         mmd_kernel = None
 
     # Get objective function
-    obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, rand_func_num_points, seed)
+    obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, 1, rand_func_num_points, seed)
 
     # Action space
     action_points = construct_grid_1d(action_lowers[0], action_uppers[0], action_density_per_dim)
