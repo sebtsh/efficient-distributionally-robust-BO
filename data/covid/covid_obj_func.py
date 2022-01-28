@@ -61,7 +61,7 @@ def median_cases(prop_tests_0, prop_tests_1, prop_init_cases_0, prop_init_cases_
     # ==== Set up parameters ====
 
     # Loading group params
-    params = load_params(base_dir + 'group_1_students_post_movein_private.yaml')[1]
+    params = load_params(base_dir + 'params.yaml')[1]
     params_list = [params.copy(), params.copy(), params.copy()]
 
     interaction_matrix = (10 + interaction_offset * 5) * np.array([[1, 0, 0],

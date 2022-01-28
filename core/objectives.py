@@ -3,7 +3,8 @@ from collections.abc import Callable
 import numpy as np
 import pickle
 import tensorflow as tf
-from marchantia.core.synth_func import create_synth_funcs
+import tensorflow_probability as tfp
+import gpflow as gpf
 from trieste.space import Box
 
 
@@ -117,3 +118,62 @@ def wind_cost(action_contexts):
     max_x_minus_c = np.max(np.concatenate([x_minus_c, np.zeros((n, 1))], axis=1), axis=1)[:, None]
 
     return 0.1 * max_c_minus_x + min_x_c - 5 * max_x_minus_c
+
+
+def create_synth_funcs(params):
+    """
+
+    :param params:
+    :return:
+    """
+    gp_leaf_dict = pickle.load(open(f"data/plant/{params}_gp_leaf_dict.p", "rb"))
+    leaf_mean, leaf_std, tbm_mean, tbm_std, tbs_mean, tbs_std, num_inducing, d = pickle.load(
+        open(f"data/plant/{params}_req_variables.p", "rb"))
+
+    gp_leaf = init_heteroscedastic_gp(num_inducing=num_inducing, d=d)
+    gpf.utilities.multiple_assign(gp_leaf, gp_leaf_dict)
+
+    def leaf_max_area_func(X):
+        """
+        Returns the predictive mean and variance of the maximum leaf area.
+        :param X: Array of shape (num_preds, d).
+        :return: Tuple (array of shape (num_preds, 1), array of shape (num_preds, 1). First element is mean, second
+        is variance.
+        """
+        mean, var = gp_leaf.predict_y(X)
+        return mean.numpy() * leaf_std + leaf_mean, var.numpy() * (leaf_std**2)
+
+    return leaf_max_area_func, None, None
+
+
+def init_heteroscedastic_gp(num_inducing, d):
+    """
+    Initializes default heteroscedastic GP, so that we can load the parameters later.
+    :param num_inducing:
+    :param d:
+    :return:
+    """
+    likelihood = gpf.likelihoods.HeteroskedasticTFPConditional(
+        distribution_class=tfp.distributions.Normal,  # Gaussian Likelihood
+        scale_transform=tfp.bijectors.Exp(),  # Exponential Transform
+    )
+
+    kernels = [
+        gpf.kernels.SquaredExponential(lengthscales=np.ones(d)),
+        gpf.kernels.SquaredExponential(lengthscales=np.ones(d))
+    ]
+
+    kernel = gpf.kernels.SeparateIndependent(kernels)
+
+    Z = tf.zeros((num_inducing, d))
+    inducing_variable = gpf.inducing_variables.SeparateIndependentInducingVariables(
+        [
+            gpf.inducing_variables.InducingPoints(Z),  # This is U1 = f1(Z1)
+            gpf.inducing_variables.InducingPoints(Z),  # This is U2 = f2(Z2)
+        ])
+
+    model = gpf.models.SVGP(kernel=kernel,
+                            likelihood=likelihood,
+                            inducing_variable=inducing_variable,
+                            num_latent_gps=likelihood.latent_dim)
+    return model
