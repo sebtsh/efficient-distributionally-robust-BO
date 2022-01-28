@@ -7,7 +7,7 @@ from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist_1d, get_discrete_uniform_dist, \
     get_margin, adversarial_expectation, cholesky_inverse, MMD, TV, modified_chi_squared, worst_case_sens, \
-    get_cubic_approx_func, get_mid_approx_func
+    get_mid_approx_func, wass_cost_vector
 from metrics.plotting import plot_function_2d
 from tqdm import trange
 from pathlib import Path
@@ -15,7 +15,7 @@ from pathlib import Path
 Path("plots").mkdir(parents=True, exist_ok=True)
 
 obj_func_name = 'rand_func'
-divergence = 'TV'  # 'MMD', 'TV' or 'modified_chi_squared'
+divergence = 'wass'  # 'MMD', 'TV', 'modified_chi_squared', or 'wass'
 dims = 2
 lowers = [0] * dims
 uppers = [1] * dims
@@ -44,7 +44,7 @@ else:
     mmd_kernel = None
 
 # Get objective function
-obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, rand_func_num_points, seed)
+obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, 1, seed=seed)
 
 # Action space (1d for now)
 action_points = construct_grid_1d(lowers[0], uppers[0], grid_density_per_dim)
@@ -78,48 +78,45 @@ num_action_points = len(action_points)
 
 ###################################################################
 
-# # Numerically verify that worst-case sensitivity is gradient at eps = 0
-#
-# for eps in [1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]:
-#     print(f"========eps {eps}=========")
-#     seed = 0
-#     obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, rand_func_num_points, seed)
-#
-#     for i in range(num_action_points):
-#         tiled_action = np.tile(action_points[i:i + 1], (num_context_points, 1))  # (num_context_points, d_x)
-#         action_contexts = np.concatenate([tiled_action, context_points],
-#                                          axis=-1)  # (num_context_points, d_x + d_c)
-#         fvals = np.squeeze(obj_func(action_contexts))
-#         if divergence == 'MMD' or divergence == 'MMD_approx':
-#             M = kernel(context_points)
-#         else:
-#             M = None
-#
-#         # f_eps0, _ = adversarial_expectation(f=fvals,
-#         #                                     M=M,
-#         #                                     w_t=ref_dist,
-#         #                                     epsilon=0,
-#         #                                     divergence=divergence,
-#         #                                     cvx_solver='SCS')
-#
-#         f_eps0 = ref_dist @ fvals
-#
-#         f_eps, _ = adversarial_expectation(f=fvals,
-#                                            M=M,
-#                                            w_t=ref_dist,
-#                                            epsilon=eps,
-#                                            divergence=divergence,
-#                                            cvx_solver='ECOS')
-#         if divergence == 'modified_chi_squared':
-#             estimated_grad = (f_eps - f_eps0) / np.sqrt(eps)
-#         else:
-#             estimated_grad = (f_eps - f_eps0) / eps
-#         worst_case_sensitivity = worst_case_sens(fvals=fvals,
-#                                                  p=ref_dist,
-#                                                  context_points=context_points,
-#                                                  kernel=kernel,
-#                                                  divergence=divergence)
-#         print((f_eps0, f_eps, estimated_grad, -worst_case_sensitivity))
+# Numerically verify that worst-case sensitivity is gradient at eps = 0
+
+for eps in [1, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]:
+    print(f"========eps {eps}=========")
+    seed = 0
+    obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, 1, rand_func_num_points, seed)
+
+    v = wass_cost_vector(context_points, 1)
+
+    for i in range(num_action_points):
+        tiled_action = np.tile(action_points[i:i + 1], (num_context_points, 1))  # (num_context_points, d_x)
+        action_contexts = np.concatenate([tiled_action, context_points],
+                                         axis=-1)  # (num_context_points, d_x + d_c)
+        fvals = np.squeeze(obj_func(action_contexts))
+        if divergence == 'MMD' or divergence == 'MMD_approx':
+            M = kernel(context_points)
+        else:
+            M = None
+
+        f_eps0 = ref_dist @ fvals
+
+        f_eps, _ = adversarial_expectation(f=fvals,
+                                           M=M,
+                                           w_t=ref_dist,
+                                           epsilon=eps,
+                                           divergence=divergence,
+                                           v=v,
+                                           cvx_solver='ECOS')
+        if divergence == 'modified_chi_squared':
+            estimated_grad = (f_eps - f_eps0) / np.sqrt(eps)
+        else:
+            estimated_grad = (f_eps - f_eps0) / eps
+        worst_case_sensitivity = worst_case_sens(fvals=fvals,
+                                                 p=ref_dist,
+                                                 context_points=context_points,
+                                                 kernel=kernel,
+                                                 divergence=divergence,
+                                                 v=v)
+        print((f_eps0, f_eps, estimated_grad, -worst_case_sensitivity))
 
 ###################################################################
 
@@ -278,79 +275,79 @@ num_action_points = len(action_points)
 ###################################################################
 
 # Plot adversarial expectation as a function of epsilon
-seed = 9
-obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, rand_func_num_points, seed)
-epsilons = np.linspace(0, 3, 100)
-actions = np.arange(20)
-adv_expectations = []
-all_deltas = []
-for i in actions:
-    tiled_action = np.tile(action_points[i:i + 1], (num_context_points, 1))  # (num_context_points, d_x)
-    action_contexts = np.concatenate([tiled_action, context_points],
-                                     axis=-1)  # (num_context_points, d_x + d_c)
-    fvals = np.squeeze(obj_func(action_contexts))
-    if divergence == 'MMD':
-        M = kernel(context_points)
-    else:
-        M = None
-    exps = []
-    for j in trange(len(epsilons)):
-        epsilon = epsilons[j]
-        expectation, _ = adversarial_expectation(f=fvals,
-                                                 M=M,
-                                                 w_t=ref_dist,
-                                                 epsilon=epsilon,
-                                                 divergence=divergence)
-
-        exps.append(expectation)
-    adv_expectations.append(exps)
-
-    deltas = []
-    for j in range(len(epsilons) - 1):
-        delta = abs(exps[j + 1] - exps[j])
-        deltas.append(delta)
-    all_deltas.append(deltas)
-
-
-for i in range(len(actions)):
-    plt.figure()
-    plt.title("Adversarial exp, seed {}, action {}".format(seed, i))
-    action = actions[i]
-    tiled_action = np.tile(action_points[action:action + 1], (num_context_points, 1))  # (num_context_points, d_x)
-    action_contexts = np.concatenate([tiled_action, context_points],
-                                     axis=-1)  # (num_context_points, d_x + d_c)
-    fvals = np.squeeze(obj_func(action_contexts))
-
-    worst_case_sensitivity = worst_case_sens(fvals=fvals,
-                                             p=ref_dist,
-                                             context_points=context_points,
-                                             kernel=kernel,
-                                             divergence=divergence)
-
-    # cubic_approx = get_cubic_approx_func(context_points,
-    #                                      fvals,
-    #                                      kernel,
-    #                                      ref_dist,
-    #                                      worst_case_sensitivity,
-    #                                      divergence)
-
-    mid_approx = get_mid_approx_func(context_points,
-                                     fvals,
-                                     kernel,
-                                     ref_dist,
-                                     worst_case_sensitivity,
-                                     divergence)
-    plt.plot(epsilons, adv_expectations[i], label="ground truth", color='#d7263d')
-    #plt.plot(epsilons, cubic_approx(epsilons), label="cubic approx", color='#00a6ed')
-    plt.plot(epsilons, mid_approx(epsilons), label="mid approx", color='#9f956c')
-    plt.legend()
-
-# plt.figure()
-# plt.title("Deltas, seed {}".format(seed))
+# seed = 9
+# obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, rand_func_num_points, seed)
+# epsilons = np.linspace(0, 3, 100)
+# actions = np.arange(20)
+# adv_expectations = []
+# all_deltas = []
+# for i in actions:
+#     tiled_action = np.tile(action_points[i:i + 1], (num_context_points, 1))  # (num_context_points, d_x)
+#     action_contexts = np.concatenate([tiled_action, context_points],
+#                                      axis=-1)  # (num_context_points, d_x + d_c)
+#     fvals = np.squeeze(obj_func(action_contexts))
+#     if divergence == 'MMD':
+#         M = kernel(context_points)
+#     else:
+#         M = None
+#     exps = []
+#     for j in trange(len(epsilons)):
+#         epsilon = epsilons[j]
+#         expectation, _ = adversarial_expectation(f=fvals,
+#                                                  M=M,
+#                                                  w_t=ref_dist,
+#                                                  epsilon=epsilon,
+#                                                  divergence=divergence)
+#
+#         exps.append(expectation)
+#     adv_expectations.append(exps)
+#
+#     deltas = []
+#     for j in range(len(epsilons) - 1):
+#         delta = abs(exps[j + 1] - exps[j])
+#         deltas.append(delta)
+#     all_deltas.append(deltas)
+#
+#
 # for i in range(len(actions)):
-#     plt.plot(epsilons[:-1], all_deltas[i], label=actions[i])
-# plt.legend()
-
-plt.show()
+#     plt.figure()
+#     plt.title("Adversarial exp, seed {}, action {}".format(seed, i))
+#     action = actions[i]
+#     tiled_action = np.tile(action_points[action:action + 1], (num_context_points, 1))  # (num_context_points, d_x)
+#     action_contexts = np.concatenate([tiled_action, context_points],
+#                                      axis=-1)  # (num_context_points, d_x + d_c)
+#     fvals = np.squeeze(obj_func(action_contexts))
+#
+#     worst_case_sensitivity = worst_case_sens(fvals=fvals,
+#                                              p=ref_dist,
+#                                              context_points=context_points,
+#                                              kernel=kernel,
+#                                              divergence=divergence)
+#
+#     # cubic_approx = get_cubic_approx_func(context_points,
+#     #                                      fvals,
+#     #                                      kernel,
+#     #                                      ref_dist,
+#     #                                      worst_case_sensitivity,
+#     #                                      divergence)
+#
+#     mid_approx = get_mid_approx_func(context_points,
+#                                      fvals,
+#                                      kernel,
+#                                      ref_dist,
+#                                      worst_case_sensitivity,
+#                                      divergence)
+#     plt.plot(epsilons, adv_expectations[i], label="ground truth", color='#d7263d')
+#     #plt.plot(epsilons, cubic_approx(epsilons), label="cubic approx", color='#00a6ed')
+#     plt.plot(epsilons, mid_approx(epsilons), label="mid approx", color='#9f956c')
+#     plt.legend()
+#
+# # plt.figure()
+# # plt.title("Deltas, seed {}".format(seed))
+# # for i in range(len(actions)):
+# #     plt.plot(epsilons[:-1], all_deltas[i], label=actions[i])
+# # plt.legend()
+#
+# plt.show()
 
 ###################################################################

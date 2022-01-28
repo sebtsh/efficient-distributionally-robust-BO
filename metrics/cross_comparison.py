@@ -11,7 +11,7 @@ from core.objectives import get_obj_func
 
 regret_type = 'cumu'
 
-obj_func_name = 'rand_func'
+obj_func_name = 'plant'
 show_plots = False
 beta = 2
 pri_divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
@@ -39,7 +39,7 @@ if obj_func_name == 'rand_func':
     ref_means = [0, 0.5]
 elif obj_func_name == 'plant':
     num_bo_iters = 1000
-    num_seeds = 5
+    num_seeds = 10
     ref_means = np.array([[0.], [1.]])
 
 

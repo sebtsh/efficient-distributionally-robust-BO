@@ -1,4 +1,3 @@
-import itertools
 import numpy as np
 import tensorflow as tf
 import cvxpy as cp
@@ -131,6 +130,7 @@ def adversarial_expectation(f: TensorType,
                             w_t: TensorType,
                             epsilon: float,
                             divergence: str,
+                            v: TensorType = None,
                             cvx_opt_max_iters: int = None,
                             cvx_opt_verbose: bool = False,
                             cvx_solver: str = 'ECOS'):
@@ -142,55 +142,83 @@ def adversarial_expectation(f: TensorType,
     :param w_t: Array of shape (|C|, ). Reference distribution
     :param epsilon: margin. Radius of ball around which we can choose our adversarial distribution
     :param divergence: str, either 'MMD', 'TV' or 'modified_chi_squared'
+    :param v: Array of shape (|C|**2, ). Cost vector using Euclidean norm
     :param cvx_opt_max_iters:
     :param cvx_opt_verbose:
     :param cvx_solver:
     :return: value, w
     """
     num_context = len(f)
-    w = cp.Variable(num_context)
 
-    if divergence == 'modified_chi_squared':
-        f = np.around(f, 4)  # avoid numerical errors with ECOS convex solver
+    if divergence != "wass":
+        w = cp.Variable(num_context)
 
-    # print(f"ref dist: {w_t}")
+        if divergence == 'modified_chi_squared':
+            f = np.around(f, 4)  # avoid numerical errors with ECOS convex solver
 
-    # print(f"f: {f}")
-    # print(f"ref_dist: {w_t}")
-    # print(f"epsilon: {epsilon}")
+        objective = cp.Minimize(w @ f)
+        if divergence == "MMD" or divergence == "MMD_approx":  # If we're calculating this, we want the true MMD
+            constraints = [cp.sum(w) == 1.0,
+                           w >= 0.,
+                           cp.quad_form(w - w_t, M) <= epsilon ** 2]
+        elif divergence == "TV":
+            constraints = [cp.sum(w) == 1.0,
+                           w >= 0.,
+                           cp.norm(w - w_t, 1) <= epsilon]
+        elif divergence == "modified_chi_squared":
+            phi = lambda x: 0.5 * ((x - 1) ** 2)
+            constraints = [cp.sum(w) == 1.0,
+                           w >= 0.,
+                           w_t @ phi(w / w_t) <= epsilon]
+        else:
+            raise Exception("Incorrect divergence given")
 
-    objective = cp.Minimize(w @ f)
-    if divergence == "MMD" or divergence == "MMD_approx":  # If we're calculating this, we want the true MMD
-        constraints = [cp.sum(w) == 1.0,
-                       w >= 0.,
-                       cp.quad_form(w - w_t, M) <= epsilon ** 2]
-    elif divergence == "TV":
-        constraints = [cp.sum(w) == 1.0,
-                       w >= 0.,
-                       cp.norm(w - w_t, 1) <= epsilon]
-    elif divergence == "modified_chi_squared":
-        phi = lambda x: 0.5 * ((x - 1) ** 2)
-        constraints = [cp.sum(w) == 1.0,
-                       w >= 0.,
-                       w_t @ phi(w / w_t) <= epsilon]
+        prob = cp.Problem(objective, constraints)
+
+        try:
+            if cvx_opt_max_iters is None:
+                expectation = prob.solve(solver=cvx_solver, verbose=cvx_opt_verbose)
+            else:
+                expectation = prob.solve(solver=cvx_solver, max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
+        except:
+            print("ECOS failed, trying SCS")
+            if cvx_opt_max_iters is None:
+                expectation = prob.solve(solver='SCS', verbose=cvx_opt_verbose)
+            else:
+                expectation = prob.solve(solver='SCS', max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
+
+        return expectation, w.value
     else:
-        raise Exception("Incorrect divergence given")
+        p = 1
+        eps_raised = epsilon ** p
+        y = cp.Variable(num_context ** 2)
 
-    prob = cp.Problem(objective, constraints)
+        M1 = np.zeros((num_context ** 2, num_context))
+        for i in range(num_context):
+            M1[i * num_context:(i + 1) * num_context, i] = np.ones(num_context)
+        M2 = np.tile(np.eye(num_context), (num_context, 1))
 
-    try:
-        if cvx_opt_max_iters is None:
-            expectation = prob.solve(solver=cvx_solver, verbose=cvx_opt_verbose)
-        else:
-            expectation = prob.solve(solver=cvx_solver, max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
-    except:
-        print("ECOS failed, trying SCS")
-        if cvx_opt_max_iters is None:
-            expectation = prob.solve(solver='SCS', verbose=cvx_opt_verbose)
-        else:
-            expectation = prob.solve(solver='SCS', max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
+        objective = cp.Minimize(y @ M2 @ f)
 
-    return expectation, w.value
+        constraints = [y @ v <= eps_raised,
+                       y >= 0.,
+                       M1.T @ y == w_t]
+
+        prob = cp.Problem(objective, constraints)
+
+        try:
+            if cvx_opt_max_iters is None:
+                expectation = prob.solve(solver=cvx_solver, verbose=cvx_opt_verbose)
+            else:
+                expectation = prob.solve(solver=cvx_solver, max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
+        except:
+            print("ECOS failed, trying SCS")
+            if cvx_opt_max_iters is None:
+                expectation = prob.solve(solver='SCS', verbose=cvx_opt_verbose)
+            else:
+                expectation = prob.solve(solver='SCS', max_iters=cvx_opt_max_iters, verbose=cvx_opt_verbose)
+
+        return expectation, M2.T @ y.value
 
 
 def get_robust_expectation_and_action(action_points: TensorType,
@@ -310,6 +338,8 @@ def get_margin(ref_dist: TensorType,
         return TV(ref_dist, true_dist)
     elif divergence == 'modified_chi_squared':
         return modified_chi_squared(true_dist, ref_dist)
+    elif divergence == 'wass':
+        return wasserstein(ref_dist, true_dist, context_points, 1)
     else:
         raise Exception("Wrong divergence passed to get_margin")
 
@@ -360,11 +390,60 @@ def variance_p(fvals,
     return p @ (fvals - mean) ** 2
 
 
+def wasserstein(w1: TensorType,
+                w2: TensorType,
+                context_points: TensorType,
+                p: int):
+    """
+    Computes the p-th Wasserstein metric between discrete probability distributions w1 and w2 using the Euclidean norm.
+    :param w1: array of shape (|C|, )
+    :param w2: array of shape (|C|, )
+    :param context_points: array of shape (|C|, ) Context points.
+    :param p: int
+    :return: float
+    """
+    num_context = len(w1)
+    y = cp.Variable(num_context ** 2)  # joint probability distribution
+
+    # Compute cost vector f with Euclidean distance
+    f = wass_cost_vector(context_points, p)
+
+    objective = cp.Minimize(y @ f)
+    M1 = np.zeros((num_context ** 2, num_context))
+    for i in range(num_context):
+        M1[i * num_context:(i + 1) * num_context, i] = np.ones(num_context)
+    M2 = np.tile(np.eye(num_context), (num_context, 1))
+
+    constraints = [y >= 0.,
+                   M1.T @ y == w1,
+                   M2.T @ y == w2]
+
+    prob = cp.Problem(objective, constraints)
+    try:
+        cost = prob.solve(solver='ECOS')
+    except:
+        print("ECOS failed, trying SCS")
+        cost = prob.solve(solver='SCS')
+
+    return cost ** (1/p)
+
+
+def wass_cost_vector(context_points, p):
+    """
+
+    :param context_points: array of shape (|C|, n)
+    :param p: int
+    :return: array of shape (|C| ** 2, )
+    """
+    return np.ravel(np.linalg.norm(context_points[:, None, :] - context_points[None, :, :], axis=2)) ** p
+
+
 def worst_case_sens(fvals,
                     p,
                     context_points,
                     kernel,
-                    divergence):
+                    divergence,
+                    v=None):
     num_context_points = len(context_points)
     if divergence == 'MMD':
         K_inv = cholesky_inverse(kernel(context_points), jitter=1e-03)
@@ -378,6 +457,8 @@ def worst_case_sens(fvals,
         worst_case_sensitivity = 0.5 * (np.max(fvals) - np.min(fvals))
     elif divergence == 'modified_chi_squared':
         worst_case_sensitivity = np.sqrt(2 * variance_p(fvals, p))
+    elif divergence == 'wass':
+        worst_case_sensitivity = np.max(np.ravel(fvals[:, None] - fvals[None, :]) / (v + 1e-08))
     else:
         raise Exception("Invalid divergence passed to worst_case_sens")
     return worst_case_sensitivity
@@ -401,9 +482,9 @@ def get_mid_approx_func(context_points,
     :param divergence:
     :return:
     """
-
+    min_i = np.argmin(fvals)
     worst_dist = np.zeros(len(context_points))
-    worst_dist[np.argmin(fvals)] = 1
+    worst_dist[min_i] = 1
 
     f_eps_max = np.min(fvals)
     f_prime_0 = -np.squeeze(worst_case_sensitivity)
@@ -417,10 +498,13 @@ def get_mid_approx_func(context_points,
     elif divergence == 'modified_chi_squared':
         sqrt_eps_max = np.sqrt(np.squeeze(modified_chi_squared(worst_dist, ref_dist)))  # Take the square root
         sqrt_eps_l = eps_l
+    elif divergence == 'wass':
+        costs = np.linalg.norm(context_points - context_points[min_i:min_i+1, :], axis=1)
+        eps_max = ref_dist @ costs
     else:
         raise Exception("Invalid divergence passed to get_mid_approx_func")
 
-    if divergence == 'MMD' or divergence == 'MMD_approx' or divergence == 'TV':
+    if divergence == 'MMD' or divergence == 'MMD_approx' or divergence == 'TV' or divergence == 'wass':
         def f(eps):
             if 0 <= eps <= eps_l:
                 fval = f_0 + 0.5 * eps * (f_prime_0 + (f_eps_max - f_0) / eps_max)

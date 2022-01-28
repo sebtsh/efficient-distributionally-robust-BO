@@ -151,9 +151,7 @@ class DRBOWorstCaseSens(Acquisition):
                                                      kernel=kernel,
                                                      divergence=divergence)
 
-            if divergence == 'MMD' or divergence == 'MMD_approx':
-                sens_factor = epsilon  # might be square root epsilon for others
-            elif divergence == 'TV':
+            if divergence == 'MMD' or divergence == 'MMD_approx' or divergence == 'TV' or divergence == 'wass':
                 sens_factor = epsilon
             elif divergence == 'modified_chi_squared':
                 sens_factor = np.sqrt(epsilon)

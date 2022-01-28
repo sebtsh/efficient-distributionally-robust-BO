@@ -12,9 +12,9 @@ ex.observers.append(FileStorageObserver('../runs'))
 @ex.named_config
 def default():
     obj_func_name = 'plant'
-    num_bo_iters = 400
+    num_bo_iters = 1000
     num_init_points = 10
-    num_seeds = 5
+    num_seeds = 10
     beta = 2
     show_plots = False
     mode = 'cumu'
