@@ -12,7 +12,7 @@ pip install -r requirements.txt
 ```
 
 ## Running experiments
-The experiment scripts may be found in the `experiments` folder, and may be run with the following commands in the main directory.
+The experiment scripts are found in the `experiments` directory, and may be run with the following commands in the main directory.
 
 Random functions from GP prior:
 ```shell
@@ -36,4 +36,31 @@ python experiments/timing.py with default
 ```
 ```shell
 python experiments/pareto.py with default
+```
+
+## Plotting results
+The plotting scripts are found in the `metrics` directory, and may be run with the following commands in the main directory. Each script requires that the corresponding experiments (with `seed` = 0, 1, ..., `num_seeds` for the robust regret experiments) have completed. The plots will then be found in the `runs` directory.
+
+Random functions from GP prior:
+```shell
+python metrics/rand_func_results.py with default
+```
+Plant maximum leaf area:
+```shell
+python metrics/plant_results.py with default
+```
+Wind power dataset:
+```shell
+python metrics/wind_results.py with default
+```
+COVID-19 test allocation:
+```shell
+python metrics/covid_results.py with default
+```
+Computation time:
+```shell
+python metrics/timing_results.py with default
+```
+```shell
+python metrics/pareto_results.py with default
 ```
