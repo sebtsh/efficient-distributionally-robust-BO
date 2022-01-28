@@ -28,7 +28,7 @@ ex.observers.append(FileStorageObserver('../runs'))
 
 
 @ex.named_config
-def rand_func():
+def default():
     obj_func_name = 'rand_func'
     dims = 2
     lowers = [0] * dims

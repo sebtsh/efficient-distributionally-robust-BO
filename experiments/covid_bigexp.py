@@ -29,7 +29,7 @@ ex.observers.append(FileStorageObserver('../runs'))
 
 
 @ex.named_config
-def covid():
+def default():
     obj_func_name = 'covid'
     action_dims = 2
     context_dims = 3

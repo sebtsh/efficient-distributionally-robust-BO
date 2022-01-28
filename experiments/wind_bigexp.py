@@ -27,7 +27,7 @@ ex.observers.append(FileStorageObserver('../runs'))
 
 
 @ex.named_config
-def wind():
+def default():
     obj_func_name = 'wind'
     action_dims = 1
     context_dims = 1
