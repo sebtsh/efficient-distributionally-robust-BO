@@ -130,10 +130,10 @@ def adversarial_expectation(f: TensorType,
                             w_t: TensorType,
                             epsilon: float,
                             divergence: str,
-                            v: TensorType = None,
                             cvx_opt_max_iters: int = None,
                             cvx_opt_verbose: bool = False,
-                            cvx_solver: str = 'ECOS'):
+                            cvx_solver: str = 'ECOS',
+                            v: TensorType = None):
     """
     Calculates inf_Q E_{c~Q}[f(x, c)]
     :param f: Array of shape (|C|, ). We are adversarially minimizing the expectation of these values. Could be
@@ -142,10 +142,10 @@ def adversarial_expectation(f: TensorType,
     :param w_t: Array of shape (|C|, ). Reference distribution
     :param epsilon: margin. Radius of ball around which we can choose our adversarial distribution
     :param divergence: str, either 'MMD', 'TV' or 'modified_chi_squared'
-    :param v: Array of shape (|C|**2, ). Cost vector using Euclidean norm
     :param cvx_opt_max_iters:
     :param cvx_opt_verbose:
     :param cvx_solver:
+    :param v: Array of shape (|C|**2, ). Cost vector using Euclidean norm. Only required for Wasserstein
     :return: value, w
     """
     num_context = len(f)
@@ -189,6 +189,8 @@ def adversarial_expectation(f: TensorType,
 
         return expectation, w.value
     else:
+        if v is None:
+            raise Exception("v cannot be None for Wasserstein")
         p = 1
         eps_raised = epsilon ** p
         y = cp.Variable(num_context ** 2)
@@ -313,7 +315,6 @@ def get_robust_exp_action_with_cvxprob(action_points: TensorType,
             raise Exception("Invalid fvals_source given")
         expectation, _ = cvx_prob(f)
         expectations.append(expectation)
-    print(expectations)
     max_idx = np.argmax(expectations)
     return np.max(expectations), action_points[max_idx:max_idx + 1]
 
@@ -406,9 +407,9 @@ def wasserstein(w1: TensorType,
     y = cp.Variable(num_context ** 2)  # joint probability distribution
 
     # Compute cost vector f with Euclidean distance
-    f = wass_cost_vector(context_points, p)
+    v = wass_cost_vector(context_points, p)
 
-    objective = cp.Minimize(y @ f)
+    objective = cp.Minimize(y @ v)
     M1 = np.zeros((num_context ** 2, num_context))
     for i in range(num_context):
         M1[i * num_context:(i + 1) * num_context, i] = np.ones(num_context)
@@ -458,6 +459,8 @@ def worst_case_sens(fvals,
     elif divergence == 'modified_chi_squared':
         worst_case_sensitivity = np.sqrt(2 * variance_p(fvals, p))
     elif divergence == 'wass':
+        if v is None:
+            raise Exception("v cannot be None for Wasserstein")
         worst_case_sensitivity = np.max(np.ravel(fvals[:, None] - fvals[None, :]) / (v + 1e-08))
     else:
         raise Exception("Invalid divergence passed to worst_case_sens")
@@ -578,13 +581,14 @@ def get_ordering(arr):
     return np.array(enum)[:, 0].astype(np.int32)
 
 
-def create_cvx_problem(num_context_points,
+def create_cvx_problem(num_context,
                        M,
                        w_t,
                        epsilon,
-                       divergence):
-    w = cp.Variable(num_context_points)
-    g = cp.Parameter(num_context_points)
+                       divergence,
+                       v=None):
+    w = cp.Variable(num_context)
+    g = cp.Parameter(num_context)
     objective = cp.Minimize(w @ g)
     if divergence == "MMD" or divergence == "MMD_approx":  # If we're calculating this, we want the true MMD
         constraints = [cp.sum(w) == 1.0,
@@ -599,6 +603,25 @@ def create_cvx_problem(num_context_points,
         constraints = [cp.sum(w) == 1.0,
                        w >= 0.,
                        w_t @ phi(w / w_t) <= epsilon]
+    elif divergence == "wass":
+        if v is None:
+            raise Exception("v cannot be None for Wasserstein")
+        p = 1
+        eps_raised = epsilon ** p
+        y = cp.Variable(num_context ** 2)
+
+        M1 = np.zeros((num_context ** 2, num_context))
+        for i in range(num_context):
+            M1[i * num_context:(i + 1) * num_context, i] = np.ones(num_context)
+        M2 = np.tile(np.eye(num_context), (num_context, 1))
+
+        objective = cp.Minimize(y @ M2 @ g)
+
+        constraints = [y @ v <= eps_raised,
+                       y >= 0.,
+                       M1.T @ y == w_t]
+
+        prob = cp.Problem(objective, constraints)
     else:
         raise Exception("Incorrect divergence given")
     prob = cp.Problem(objective, constraints)
@@ -611,7 +634,10 @@ def create_cvx_problem(num_context_points,
             print("ECOS failed, trying SCS")
             value = prob.solve(solver='SCS', warm_start=True)
         sol = w.value
-        return value, sol
+        if divergence != "wass":
+            return value, sol
+        else:
+            return value, M2.T @ y.value
 
     return wrapper
 

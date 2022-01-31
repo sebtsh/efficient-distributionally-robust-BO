@@ -18,7 +18,7 @@ from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist_1d, get_discrete_uniform_dist, \
-    get_margin, get_robust_expectation_and_action, normalize_dist
+    get_margin, get_robust_exp_action_with_cvxprob, normalize_dist, create_cvx_problem, wass_cost_vector
 from metrics.plotting import plot_function_2d, plot_bo_points_2d, plot_robust_regret, plot_gp_2d
 
 matplotlib.use('Agg')
@@ -56,7 +56,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
     Path(plot_dir).mkdir(parents=True, exist_ok=True)
     Path(result_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['modified_chi_squared']
+    divergences = ['wass']
     ref_means = [0, 0.5]
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
 
@@ -74,8 +74,15 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
             f_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls] * dims)
             if divergence == 'MMD' or divergence == 'MMD_approx':
                 mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=[ls])  # 1d for now
+                M = mmd_kernel(context_points)
             else:
                 mmd_kernel = None
+                M = None
+
+            if divergence == "wass":
+                v = wass_cost_vector(context_points, 1)
+            else:
+                v = None
 
             # Get objective function
             obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, 1, rand_func_num_points, seed)
@@ -90,15 +97,20 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
             margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
             margin_func = lambda x: margin  # Constant margin for now
 
+            # Create cvx problem
+            cvx_prob = create_cvx_problem(num_context=len(context_points),
+                                          M=M,
+                                          w_t=ref_dist_func(0),
+                                          epsilon=margin,
+                                          divergence=divergence,
+                                          v=v)
+
             print("Calculating robust expectation")
-            robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
-                                                                                  context_points=context_points,
-                                                                                  kernel=mmd_kernel,
-                                                                                  fvals_source='obj_func',
-                                                                                  ref_dist=ref_dist_func(0),
-                                                                                  divergence=divergence,
-                                                                                  epsilon=margin_func(0),
-                                                                                  obj_func=obj_func)
+            robust_expectation, robust_action = get_robust_exp_action_with_cvxprob(action_points=action_points,
+                                                                                   context_points=context_points,
+                                                                                   fvals_source='obj_func',
+                                                                                   cvx_prob=cvx_prob,
+                                                                                   obj_func=obj_func)
 
             for acq_name in acquisitions:
                 file_name = "{}-{}-{}-seed{}-beta{}-refmean{}".format(obj_func_name,
@@ -142,7 +154,8 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                                                                            margin_func=margin_func,
                                                                                            divergence=divergence,
                                                                                            mmd_kernel=mmd_kernel,
-                                                                                           optimize_gp=is_optimizing_gp)
+                                                                                           optimize_gp=is_optimizing_gp,
+                                                                                           cvx_prob=cvx_prob)
                 print("Final dataset: {}".format(final_dataset))
                 print("Average acquisition time in seconds: {}".format(average_acq_time))
                 # Plots
@@ -172,7 +185,8 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                                                           divergence=divergence,
                                                                           robust_expectation_action=(
                                                                               robust_expectation, robust_action),
-                                                                          title=title)
+                                                                          title=title,
+                                                                          cvx_prob=cvx_prob)
                 fig.savefig(plot_dir + file_name + "-regret.png")
                 plt.close(fig)
 

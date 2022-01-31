@@ -15,8 +15,8 @@ from core.models import GPRModule
 from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
-from core.utils import construct_grid_1d, cross_product, get_margin, get_robust_expectation_and_action, \
-    normalize_dist, get_discrete_uniform_dist
+from core.utils import construct_grid_1d, cross_product, get_margin, get_robust_exp_action_with_cvxprob, \
+    normalize_dist, get_discrete_uniform_dist, create_cvx_problem
 from metrics.plotting import plot_function_2d, plot_bo_points_2d, plot_robust_regret, plot_gp_2d, \
     plot_cumulative_rewards
 
@@ -91,8 +91,10 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
         f_kernel = gpf.kernels.SquaredExponential(lengthscales=lengthscales)
         if divergence == 'MMD' or divergence == 'MMD_approx':
             mmd_kernel = gpf.kernels.SquaredExponential(lengthscales=context_lengthscales)
+            M = mmd_kernel(context_points)
         else:
             mmd_kernel = None
+            M = None
 
         # Get objective function
         obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, context_dims)
@@ -108,16 +110,19 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
         margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
         margin_func = lambda x: margin  # Constant margin for now
 
-        # Calculate ground truth (robust exp) once to speed things up. Assumes constant dist and epsilon functions
+        # Create cvx problem
+        cvx_prob = create_cvx_problem(num_context=len(context_points),
+                                      M=M,
+                                      w_t=ref_dist_func(0),
+                                      epsilon=margin,
+                                      divergence=divergence)
+
         print("Calculating robust expectation")
-        robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
-                                                                              context_points=context_points,
-                                                                              kernel=mmd_kernel,
-                                                                              fvals_source='obj_func',
-                                                                              ref_dist=ref_dist_func(0),
-                                                                              divergence=divergence,
-                                                                              epsilon=margin_func(0),
-                                                                              obj_func=obj_func)
+        robust_expectation, robust_action = get_robust_exp_action_with_cvxprob(action_points=action_points,
+                                                                               context_points=context_points,
+                                                                               fvals_source='obj_func',
+                                                                               cvx_prob=cvx_prob,
+                                                                               obj_func=obj_func)
 
         for acq_name in acquisitions:
             file_name = "{}-month{}-{}-{}-seed{}-beta{}".format(obj_func_name,
@@ -161,7 +166,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                                                                        divergence=divergence,
                                                                                        mmd_kernel=mmd_kernel,
                                                                                        optimize_gp=is_optimizing_gp,
-                                                                                       custom_sequence=power_sequence)
+                                                                                       custom_sequence=power_sequence,
+                                                                                       cvx_prob=cvx_prob)
             print("Final dataset: {}".format(final_dataset))
             print("Average acquisition time in seconds: {}".format(average_acq_time))
 

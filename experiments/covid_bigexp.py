@@ -119,7 +119,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
             margin_func = lambda x: margin  # Constant margin for now
 
             # Create cvx problem
-            cvx_prob = create_cvx_problem(num_context_points=len(context_points),
+            cvx_prob = create_cvx_problem(num_context=len(context_points),
                                           M=M,
                                           w_t=ref_dist_func(0),
                                           epsilon=margin,
