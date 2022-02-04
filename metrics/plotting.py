@@ -490,6 +490,7 @@ def plot_robust_regret(obj_func,
             query_expectation, w = adversarial_expectation(f=f, M=M, w_t=ref_dist_func(t), epsilon=margin_func(t),
                                                            divergence=divergence)
         else:
+            f = np.squeeze(np.array(f))
             query_expectation, w = cvx_prob(f)
         if robust_expectation_action is None:
             robust_expectation, robust_action = get_robust_expectation_and_action(action_points=action_points,
