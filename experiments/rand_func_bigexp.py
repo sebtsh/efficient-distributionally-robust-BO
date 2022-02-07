@@ -39,7 +39,7 @@ def default():
     obs_variance = 0.001
     is_optimizing_gp = False
     opt_max_iter = 10
-    num_bo_iters = 400
+    num_bo_iters = 1000
     num_init_points = 10
     beta_const = 2
     ref_var = 0.02

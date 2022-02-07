@@ -52,7 +52,8 @@ class Acquisition(ABC):
                 divergence: str,
                 kernel: Kernel,
                 epsilon: float,
-                cvx_prob: Callable):
+                cvx_prob: Callable,
+                v: TensorType):
         """
         Takes in models and a search space and returns an array of shape (b, d) that represents a batch selection
         of next points to query.
@@ -65,6 +66,7 @@ class Acquisition(ABC):
         :param kernel: gpflow kernel
         :param epsilon: margin
         :param cvx_prob: function wrapper created by create_cvx_problem
+        :param v: For Wasserstein
         :return: array of shape (b, d)
         """
         pass
@@ -90,7 +92,8 @@ class DRBOGeneral(Acquisition):
                 divergence: str,
                 kernel: Kernel,
                 epsilon: float,
-                cvx_prob: Callable):
+                cvx_prob: Callable,
+                v: TensorType):
         if cvx_prob is None:
             _, robust_action = get_robust_expectation_and_action(action_points=action_points,
                                                                  context_points=context_points,
@@ -134,7 +137,8 @@ class DRBOWorstCaseSens(Acquisition):
                 divergence: str,
                 kernel: Kernel,
                 epsilon: float,
-                cvx_prob: Callable):
+                cvx_prob: Callable,
+                v: TensorType):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         adv_lower_bounds = []
@@ -149,7 +153,8 @@ class DRBOWorstCaseSens(Acquisition):
                                                      p=ref_dist,
                                                      context_points=context_points,
                                                      kernel=kernel,
-                                                     divergence=divergence)
+                                                     divergence=divergence,
+                                                     v=v)
 
             if divergence == 'MMD' or divergence == 'MMD_approx' or divergence == 'TV' or divergence == 'wass':
                 sens_factor = epsilon
@@ -188,7 +193,8 @@ class DRBOMidApprox(Acquisition):
                 divergence: str,
                 kernel: Kernel,
                 epsilon: float,
-                cvx_prob: Callable):
+                cvx_prob: Callable,
+                v: TensorType):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         adv_approxs = []
@@ -202,7 +208,8 @@ class DRBOMidApprox(Acquisition):
                                                      p=ref_dist,
                                                      context_points=context_points,
                                                      kernel=kernel,
-                                                     divergence=divergence)
+                                                     divergence=divergence,
+                                                     v=v)
 
             V_approx_func = get_mid_approx_func(context_points=context_points,
                                                 fvals=fvals,
@@ -237,7 +244,8 @@ class GPUCBStochastic(Acquisition):
                 divergence: str,
                 kernel: Kernel,
                 epsilon: float,
-                cvx_prob: Callable):
+                cvx_prob: Callable,
+                v: TensorType):
         num_action_points = len(action_points)
         num_context_points = len(context_points)
         max_val = -np.infty
