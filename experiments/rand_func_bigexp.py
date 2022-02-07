@@ -155,7 +155,8 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
                                                                                            divergence=divergence,
                                                                                            mmd_kernel=mmd_kernel,
                                                                                            optimize_gp=is_optimizing_gp,
-                                                                                           cvx_prob=cvx_prob)
+                                                                                           cvx_prob=cvx_prob,
+                                                                                           v=v)
                 print("Final dataset: {}".format(final_dataset))
                 print("Average acquisition time in seconds: {}".format(average_acq_time))
                 # Plots
