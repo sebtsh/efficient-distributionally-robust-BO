@@ -16,7 +16,7 @@ from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
 from core.utils import construct_grid_1d, cross_product, get_margin, get_robust_exp_action_with_cvxprob, \
-    normalize_dist, get_discrete_uniform_dist, create_cvx_problem
+    normalize_dist, get_discrete_uniform_dist, create_cvx_problem, wass_cost_vector
 from metrics.plotting import plot_function_2d, plot_bo_points_2d, plot_robust_regret, plot_gp_2d, \
     plot_cumulative_rewards
 
@@ -96,6 +96,11 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
             mmd_kernel = None
             M = None
 
+        if divergence == "wass":
+            v = wass_cost_vector(context_points, 1)
+        else:
+            v = None
+
         # Get objective function
         obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, context_dims)
         power_sequence = power_in_months[month][:, None]
@@ -115,7 +120,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                       M=M,
                                       w_t=ref_dist_func(0),
                                       epsilon=margin,
-                                      divergence=divergence)
+                                      divergence=divergence,
+                                      v=v)
 
         print("Calculating robust expectation")
         robust_expectation, robust_action = get_robust_exp_action_with_cvxprob(action_points=action_points,
@@ -167,7 +173,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                                                                        mmd_kernel=mmd_kernel,
                                                                                        optimize_gp=is_optimizing_gp,
                                                                                        custom_sequence=power_sequence,
-                                                                                       cvx_prob=cvx_prob)
+                                                                                       cvx_prob=cvx_prob,
+                                                                                       v=v)
             print("Final dataset: {}".format(final_dataset))
             print("Average acquisition time in seconds: {}".format(average_acq_time))
 

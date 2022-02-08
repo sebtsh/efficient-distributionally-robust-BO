@@ -19,7 +19,7 @@ from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist, get_discrete_uniform_dist, \
-    get_margin, get_robust_exp_action_with_cvxprob, normalize_dist, create_cvx_problem
+    get_margin, get_robust_exp_action_with_cvxprob, normalize_dist, create_cvx_problem, wass_cost_vector
 from metrics.plotting import plot_robust_regret
 
 matplotlib.use('Agg')
@@ -99,6 +99,11 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                 mmd_kernel = None
                 M = None
 
+            if divergence == "wass":
+                v = wass_cost_vector(context_points, 1)
+            else:
+                v = None
+
             # Get objective function
             obj_func = get_obj_func(obj_func_name, all_lowers, all_uppers, f_kernel, context_dims)
 
@@ -117,7 +122,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                           M=M,
                                           w_t=ref_dist_func(0),
                                           epsilon=margin,
-                                          divergence=divergence)
+                                          divergence=divergence,
+                                          v=v)
 
             print("Calculating robust expectation")
             start = process_time()
@@ -171,7 +177,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                                                                            divergence=divergence,
                                                                                            mmd_kernel=mmd_kernel,
                                                                                            optimize_gp=is_optimizing_gp,
-                                                                                           cvx_prob=cvx_prob)
+                                                                                           cvx_prob=cvx_prob,
+                                                                                           v=v)
                 print("Final dataset: {}".format(final_dataset))
                 print("Average acquisition time in seconds: {}".format(average_acq_time))
                 # Plots
