@@ -399,7 +399,7 @@ def wasserstein(w1: TensorType,
     Computes the p-th Wasserstein metric between discrete probability distributions w1 and w2 using the Euclidean norm.
     :param w1: array of shape (|C|, )
     :param w2: array of shape (|C|, )
-    :param context_points: array of shape (|C|, ) Context points.
+    :param context_points: array of shape (|C|, n). Context points.
     :param p: int
     :return: float
     """

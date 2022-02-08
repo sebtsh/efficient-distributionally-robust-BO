@@ -60,7 +60,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
     Path(plot_dir).mkdir(parents=True, exist_ok=True)
     Path(result_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
+    divergences = ['wass']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
     ref_means = np.array([[0.], [1.]])
     ref_cov = ref_var * np.eye(context_dims)
@@ -196,7 +196,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                                                           divergence=divergence,
                                                                           robust_expectation_action=(
                                                                               robust_expectation, robust_action),
-                                                                          title=title)
+                                                                          title=title,
+                                                                          cvx_prob=cvx_prob)
                 fig.savefig(plot_dir + file_name + "-regret.png")
                 plt.close(fig)
 

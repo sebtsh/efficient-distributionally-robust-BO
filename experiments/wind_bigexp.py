@@ -44,7 +44,7 @@ def default():
     num_init_points = 10
     beta_const = 2
     seed = 0
-    month = 0  # 0-23
+    month = 1  # 0-23
 
 
 @ex.automain
@@ -57,7 +57,7 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
     Path(plot_dir).mkdir(parents=True, exist_ok=True)
     Path(result_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['modified_chi_squared']
+    divergences = ['wass']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
 
     all_dims = action_dims + context_dims
@@ -109,9 +109,9 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
         if divergence == 'modified_chi_squared':  # Add small uniform everywhere for numeric reasons
             ref_dist_func = lambda x: normalize_dist(ref_dist + get_discrete_uniform_dist(context_points)/100)
         else:
-            ref_dist_func = lambda x: ref_dist
+            ref_dist_func = lambda x: normalize_dist(ref_dist)
         true_dist = true_dist_in_months[month]
-        true_dist_func = lambda x: true_dist
+        true_dist_func = lambda x: normalize_dist(true_dist)
         margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
         margin_func = lambda x: margin  # Constant margin for now
 
@@ -210,7 +210,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                                                       divergence=divergence,
                                                                       robust_expectation_action=(
                                                                           robust_expectation, robust_action),
-                                                                      title=title)
+                                                                      title=title,
+                                                                      cvx_prob=cvx_prob)
             fig.savefig(plot_dir + file_name + "-regret.png")
             plt.close(fig)
 

@@ -202,7 +202,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
                                                                           divergence=divergence,
                                                                           robust_expectation_action=(
                                                                               robust_expectation, robust_action),
-                                                                          title=title)
+                                                                          title=title,
+                                                                          cvx_prob=cvx_prob)
                 fig.savefig(plot_dir + file_name + "-regret.png")
                 plt.close(fig)
 
