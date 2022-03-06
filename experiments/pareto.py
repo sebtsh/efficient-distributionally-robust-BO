@@ -26,7 +26,7 @@ ex.observers.append(FileStorageObserver('../runs'))
 @ex.named_config
 def default():
     obj_func_name = 'rand_func'
-    divergence = 'MMD_approx'  # 'MMD', 'TV' or 'modified_chi_squared'' or 'modified_chi_squared'
+    divergence = 'wass'
     action_dims = 1
     context_dims = 2
     action_lowers = [0] * action_dims
