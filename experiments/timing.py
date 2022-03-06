@@ -15,7 +15,7 @@ from core.objectives import get_obj_func
 from core.observers import mk_noisy_observer
 from core.optimization import bayes_opt_loop_dist_robust
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist_1d, get_discrete_uniform_dist, \
-    get_margin
+    get_margin, wass_cost_vector
 
 ex = Experiment("DRBO_timing")
 ex.observers.append(FileStorageObserver('../runs'))
@@ -65,6 +65,11 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
                 else:
                     mmd_kernel = None
 
+                if divergence == "wass":
+                    v = wass_cost_vector(context_points, 1)
+                else:
+                    v = None
+
                 # Get objective function
                 obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, 1, rand_func_num_points, seed)
 
@@ -109,7 +114,8 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
                                                                                            margin_func=margin_func,
                                                                                            divergence=divergence,
                                                                                            mmd_kernel=mmd_kernel,
-                                                                                           optimize_gp=is_optimizing_gp)
+                                                                                           optimize_gp=is_optimizing_gp,
+                                                                                           v=v)
                 average_acq_times.append(average_acq_time)
             timing_dict[acq_name] = np.array(average_acq_times)
         pickle.dump(timing_dict, open(result_dir + f"timing_dict-{divergence}.p", "wb"))
