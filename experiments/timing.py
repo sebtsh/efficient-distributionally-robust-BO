@@ -65,11 +65,6 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
                 else:
                     mmd_kernel = None
 
-                if divergence == "wass":
-                    v = wass_cost_vector(context_points, 1)
-                else:
-                    v = None
-
                 # Get objective function
                 obj_func = get_obj_func(obj_func_name, lowers, uppers, f_kernel, 1, rand_func_num_points, seed)
 
@@ -78,6 +73,11 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
                 # Context space (1d for now)
                 context_points = construct_grid_1d(lowers[1], uppers[1], context_grid_density)
                 search_points = cross_product(action_points, context_points)
+
+                if divergence == "wass":
+                    v = wass_cost_vector(context_points, 1)
+                else:
+                    v = None
 
                 observer = mk_noisy_observer(obj_func, obs_variance)
                 init_dataset = observer(search_points[np.random.randint(0, len(search_points), num_init_points)])
