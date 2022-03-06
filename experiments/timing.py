@@ -48,7 +48,7 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
     result_dir = "runs/timing/"
     Path(result_dir).mkdir(parents=True, exist_ok=True)
     context_grid_densities = np.arange(1000, 10000, 1000)
-    divergences = ['MMD', 'MMD_approx', 'TV', 'modified_chi_squared']
+    divergences = ['wass']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
 
     for divergence in divergences:
