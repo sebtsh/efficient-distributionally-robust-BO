@@ -47,7 +47,7 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
          ref_mean, ref_var, seed):
     result_dir = "runs/timing/"
     Path(result_dir).mkdir(parents=True, exist_ok=True)
-    context_grid_densities = np.arange(300, 3000, 300)
+    context_grid_densities = np.arange(300, 2101, 300)
     divergences = ['wass']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
 
@@ -92,12 +92,12 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
                 # Acquisition
                 acquisition = get_acquisition(acq_name=acq_name,
                                               beta=lambda x: beta_const,
-                                              divergence=divergence)  # TODO: Implement beta function
+                                              divergence=divergence)
 
                 # Distribution generating functions
                 ref_dist_func = lambda x: get_discrete_normal_dist_1d(context_points, ref_mean, ref_var)
                 true_dist_func = lambda x: get_discrete_uniform_dist(context_points)
-                margin = get_margin(ref_dist_func(0), true_dist_func(0), mmd_kernel, context_points, divergence)
+                margin = 0.5
                 margin_func = lambda x: margin  # Constant margin for now
                 print("Using margin = {}".format(margin))
 
