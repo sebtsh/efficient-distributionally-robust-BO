@@ -47,7 +47,7 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
          ref_mean, ref_var, seed):
     result_dir = "runs/timing/"
     Path(result_dir).mkdir(parents=True, exist_ok=True)
-    context_grid_densities = np.arange(300, 2101, 300)
+    context_grid_densities = np.arange(100, 901, 100)
     divergences = ['wass']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
 
