@@ -103,7 +103,8 @@ class DRBOGeneral(Acquisition):
                                                                  divergence=divergence,
                                                                  epsilon=epsilon,
                                                                  model=model,
-                                                                 beta=self.beta(t))
+                                                                 beta=self.beta(t),
+                                                                 v=v)
         else:
             _, robust_action = get_robust_exp_action_with_cvxprob(action_points=action_points,
                                                                   context_points=context_points,

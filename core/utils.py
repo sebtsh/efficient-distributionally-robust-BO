@@ -234,7 +234,8 @@ def get_robust_expectation_and_action(action_points: TensorType,
                                       model: ModelOptModule = None,
                                       beta: float = None,
                                       cvx_opt_max_iters: int = 50000,
-                                      cvx_opt_verbose: bool = False
+                                      cvx_opt_verbose: bool = False,
+                                      v: TensorType = None,
                                       ):
     """
     Calculates max_x inf_Q E_{c~Q}[f(x, c)]
@@ -250,6 +251,7 @@ def get_robust_expectation_and_action(action_points: TensorType,
     :param beta: Beta for UCB scores. Only used if fvals_source is 'ucb'
     :param cvx_opt_max_iters:
     :param cvx_opt_verbose:
+    :param v:
     :return: tuple (float, array of shape (1, d_x)). Value of robust action, and robust action
     """
     num_actions = len(action_points)
@@ -275,7 +277,8 @@ def get_robust_expectation_and_action(action_points: TensorType,
                                                  epsilon=epsilon,
                                                  divergence=divergence,
                                                  cvx_opt_max_iters=cvx_opt_max_iters,
-                                                 cvx_opt_verbose=cvx_opt_verbose)
+                                                 cvx_opt_verbose=cvx_opt_verbose,
+                                                 v=v)
         expectations.append(expectation)
     max_idx = np.argmax(expectations)
     return np.max(expectations), action_points[max_idx:max_idx + 1]
