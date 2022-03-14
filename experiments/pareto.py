@@ -15,7 +15,7 @@ print(sys.path)
 
 from core.objectives import get_obj_func
 from core.utils import construct_grid_1d, cross_product, get_discrete_normal_dist, get_discrete_uniform_dist, \
-    get_margin, adversarial_expectation, get_mid_approx_func, worst_case_sens, get_action_contexts
+    get_margin, adversarial_expectation, get_mid_approx_func, worst_case_sens, get_action_contexts, wass_cost_vector
 
 matplotlib.use('Agg')
 
@@ -34,7 +34,7 @@ def default():
     context_lowers = [0] * context_dims
     context_uppers = [1] * context_dims
     action_density_per_dim = 20
-    context_density_per_dim = 20
+    context_density_per_dim = 30
     rand_func_num_points = 100
     ls = 0.1
     ref_mean = 0.5
@@ -79,6 +79,11 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
         context_points = cross_product(context_points, construct_grid_1d(context_lowers[i + 1], context_uppers[i + 1],
                                                                          context_density_per_dim))
 
+    if divergence == "wass":
+        v = wass_cost_vector(context_points, 1)
+    else:
+        v = None
+
     # Distribution generating functions
     ref_mean_arr = ref_mean * np.ones(context_dims)
     ref_cov = np.eye(context_dims) * ref_var
@@ -115,7 +120,8 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
                                                  M=M,
                                                  w_t=ref_dist,
                                                  epsilon=epsilon,
-                                                 divergence=divergence)
+                                                 divergence=divergence,
+                                                 v=v)
         true_adv_exps.append(expectation)
 
         # Worst case sensitivity approximation
@@ -124,7 +130,8 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
                                                  p=ref_dist,
                                                  context_points=context_points,
                                                  kernel=kernel,
-                                                 divergence=divergence)
+                                                 divergence=divergence,
+                                                 v=v)
         V_approx_func = get_mid_approx_func(context_points=context_points,
                                             fvals=f,
                                             kernel=kernel,
@@ -146,7 +153,8 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
                                                                epsilon=epsilon,
                                                                divergence=divergence,
                                                                cvx_opt_max_iters=max_iters,
-                                                               cvx_solver='SCS')
+                                                               cvx_solver='SCS',
+                                                               v=v)
             end = process_time()
             truncated_exps.append(truncated_expectation)
             truncated_timings.append(end - start)
@@ -180,11 +188,11 @@ def main(obj_func_name, divergence, action_lowers, action_uppers, context_lowers
     print("Average timings: {}".format(truncated_average_timings))
 
     file_name = "pareto-{}-{}-seed{}-refmean{}-maxiterblock{}-cdensity{}".format(obj_func_name,
-                                                                                divergence,
-                                                                                seed,
-                                                                                ref_mean,
-                                                                                scs_max_iter_block,
-                                                                                context_density_per_dim)
+                                                                                 divergence,
+                                                                                 seed,
+                                                                                 ref_mean,
+                                                                                 scs_max_iter_block,
+                                                                                 context_density_per_dim)
 
     pickle.dump((true_adv_exps, wcs_adv_approxs, wcs_timings, all_truncated_exps, all_truncated_timings),
                 open(result_dir + file_name + ".p", "wb"))
