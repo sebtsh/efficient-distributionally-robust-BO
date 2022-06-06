@@ -12,7 +12,7 @@ pip install -r requirements.txt
 ```
 
 ## Running experiments
-The experiment scripts are found in the `experiments` directory, and may be run with the following commands in the main directory.
+The experiment scripts are found in the `experiments` directory, and may be run with the following commands in the main directory. Change the desired distribution distances and acquisitions within the files using the `divergences` and `acquisitions` variables.
 
 Random functions from GP prior:
 ```shell
@@ -39,7 +39,7 @@ python experiments/pareto.py with default
 ```
 
 ## Plotting results
-The plotting scripts are found in the `metrics` directory, and may be run with the following commands in the main directory. Each script requires that the corresponding experiments (with `seed` = 0, 1, ..., `num_seeds` for the robust regret experiments) have completed. The plots will then be found in the `runs` directory.
+The plotting scripts are found in the `metrics` directory, and may be run with the following commands in the main directory. Each script requires that the corresponding experiments (with `seed` = 0, 1, ..., `num_seeds` for the robust regret experiments) have completed. The plots will then be found in the `runs` directory. Change the desired distribution distances and acquisitions within the files using the `divergences` and `acquisitions` variables.
 
 Random functions from GP prior:
 ```shell
