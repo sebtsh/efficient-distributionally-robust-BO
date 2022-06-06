@@ -26,10 +26,10 @@ def get_acquisition(acq_name,
         return GPUCBStochastic(**args)
     elif acq_name == 'DRBOGeneral':
         return DRBOGeneral(**args)
-    elif acq_name == 'DRBOWorstCaseSens':
-        return DRBOWorstCaseSens(**args)
-    elif acq_name == 'DRBOMidApprox':
-        return DRBOMidApprox(**args)
+    elif acq_name == 'WorstCaseSens':
+        return WorstCaseSens(**args)
+    elif acq_name == 'MinimaxApprox':
+        return MinimaxApprox(**args)
     else:
         raise Exception('Acquisition name is wrong')
 
@@ -115,7 +115,7 @@ class DRBOGeneral(Acquisition):
         return robust_action
 
 
-class DRBOWorstCaseSens(Acquisition):
+class WorstCaseSens(Acquisition):
     """
     Uses worst case sensitivity (Gotoh et. al., 2020) as a fast upper bound for the distributionally robust
     maximin problem.
@@ -171,9 +171,9 @@ class DRBOWorstCaseSens(Acquisition):
         return action_points[max_idx:max_idx + 1]
 
 
-class DRBOMidApprox(Acquisition):
+class MinimaxApprox(Acquisition):
     """
-    Uses a cubic approximation to the adversarial expectation function V to improve the worst case sensitivity
+    Uses an approximation to the adversarial expectation function V to improve the worst case sensitivity
     approximation for large epsilon.
     """
 

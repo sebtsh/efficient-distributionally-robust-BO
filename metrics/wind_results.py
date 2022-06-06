@@ -35,17 +35,17 @@ def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, s
     Path(sum_results_dir).mkdir(parents=True, exist_ok=True)
 
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared', 'wass']
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'WorstCaseSens', 'MinimaxApprox']
 
     color_dict = {'GP-UCB': '#d7263d',
                   'DRBOGeneral': '#fbb13c',
-                  'DRBOWorstCaseSens': '#26c485',
-                  'DRBOMidApprox': '#00a6ed'}
+                  'WorstCaseSens': '#26c485',
+                  'MinimaxApprox': '#00a6ed'}
 
     acq_name_dict = {'GP-UCB': 'GP-UCB',
                      'DRBOGeneral': 'Exact',
-                     'DRBOWorstCaseSens': 'WCS',
-                     'DRBOMidApprox': 'MinimaxApprox'}
+                     'WorstCaseSens': 'WCS',
+                     'MinimaxApprox': 'MinimaxApprox'}
 
     if mode == 'immcumu':
         for divergence in divergences:

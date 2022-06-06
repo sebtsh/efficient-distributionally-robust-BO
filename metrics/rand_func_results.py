@@ -30,12 +30,12 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, show_plots, be
 
     Path("runs/results").mkdir(parents=True, exist_ok=True)
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared', 'wass']
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'WorstCaseSens', 'MinimaxApprox']
     x = np.arange(num_bo_iters)
     color_dict = {'GP-UCB': '#d7263d',
                   'DRBOGeneral': '#fbb13c',
-                  'DRBOWorstCaseSens': '#26c485',
-                  'DRBOMidApprox': '#00a6ed'}
+                  'WorstCaseSens': '#26c485',
+                  'MinimaxApprox': '#00a6ed'}
     dir = "runs/" + obj_func_name + "/"
     result_dir = dir + "indiv_results/"
     sum_results_dir = dir + "summarized_results/"

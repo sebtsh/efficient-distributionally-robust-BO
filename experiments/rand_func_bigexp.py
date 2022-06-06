@@ -57,7 +57,7 @@ def main(obj_func_name, lowers, uppers, grid_density_per_dim, rand_func_num_poin
     Path(result_dir).mkdir(parents=True, exist_ok=True)
 
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared', 'wass']
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'WorstCaseSens', 'MinimaxApprox']
     ref_means = [0, 0.5]
 
     for divergence in divergences:

@@ -33,20 +33,20 @@ def main(show_plots, figsize, dpi):
     Path(result_dir).mkdir(parents=True, exist_ok=True)
     context_grid_densities = np.arange(100, 901, 100)
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared', 'wass']
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'WorstCaseSens', 'MinimaxApprox']
     color_dict = {'GP-UCB': '#d7263d',
                   'DRBOGeneral': '#fbb13c',
-                  'DRBOWorstCaseSens': '#26c485',
-                  'DRBOMidApprox': '#00a6ed'}
+                  'WorstCaseSens': '#26c485',
+                  'MinimaxApprox': '#00a6ed'}
     marker_dict = {'GP-UCB': 's',
                    'DRBOGeneral': '8',
-                   'DRBOWorstCaseSens': 'x',
-                   'DRBOMidApprox': 'P'}
+                   'WorstCaseSens': 'x',
+                   'MinimaxApprox': 'P'}
 
     acq_name_dict = {'GP-UCB': 'GP-UCB',
                      'DRBOGeneral': 'Exact',
-                     'DRBOWorstCaseSens': 'WCS',
-                     'DRBOMidApprox': 'MinimaxApprox'}
+                     'WorstCaseSens': 'WCS',
+                     'MinimaxApprox': 'MinimaxApprox'}
 
     for divergence in divergences:
         timing_dict = pickle.load(open(result_dir + f"timing_dict-{divergence}.p", "rb"))

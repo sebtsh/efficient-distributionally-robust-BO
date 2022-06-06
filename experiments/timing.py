@@ -49,7 +49,7 @@ def main(obj_func_name, lowers, uppers, action_grid_density, rand_func_num_point
     Path(result_dir).mkdir(parents=True, exist_ok=True)
     context_grid_densities = np.arange(100, 901, 100)  # non-Wass: np.arange(300, 3000, 300) Wass: np.arange(100, 901, 100)
     divergences = ['wass']
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'WorstCaseSens', 'MinimaxApprox']
 
     for divergence in divergences:
         timing_dict = {}

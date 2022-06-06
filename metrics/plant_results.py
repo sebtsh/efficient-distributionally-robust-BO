@@ -38,13 +38,13 @@ def main(obj_func_name, num_bo_iters, num_init_points, num_seeds, beta, show_plo
     Path(sum_results_dir).mkdir(parents=True, exist_ok=True)
 
     divergences = ['MMD_approx', 'TV', 'modified_chi_squared', 'wass']
-    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'WorstCaseSens', 'MinimaxApprox']
     ref_means = np.array([[0.], [1.]])
     x = np.arange(num_bo_iters)
     color_dict = {'GP-UCB': '#d7263d',
                   'DRBOGeneral': '#fbb13c',
-                  'DRBOWorstCaseSens': '#26c485',
-                  'DRBOMidApprox': '#00a6ed'}
+                  'WorstCaseSens': '#26c485',
+                  'MinimaxApprox': '#00a6ed'}
 
     if mode == 'immcumu':
         for ref_mean in ref_means:
