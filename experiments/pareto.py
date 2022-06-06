@@ -40,7 +40,7 @@ def default():
     ref_mean = 0.5
     ref_var = 0.1
     num_scs_max_iters = 20
-    scs_max_iter_block = 400
+    scs_max_iter_block = 20
     seed = 0
     show_plots = False
 
