@@ -17,12 +17,12 @@ ex.observers.append(FileStorageObserver('../runs'))
 
 
 @ex.named_config
-def rand_func():
+def default():
     obj_func_name = 'rand_func'
-    divergence = 'MMD_approx'  # 'MMD', 'TV' or 'modified_chi_squared'' or 'modified_chi_squared'
-    context_density_per_dim = 100
+    divergence = 'wass'  # 'MMD_approx', 'TV', 'modified_chi_squared'' or 'modified_chi_squared'
+    context_density_per_dim = 30
     ref_mean = 0.5
-    scs_max_iter_block = 400
+    scs_max_iter_block = 10
     seed = 0
     figsize = (8, 6)
     dpi = 200
@@ -77,4 +77,4 @@ def main(obj_func_name, divergence, context_density_per_dim, ref_mean, scs_max_i
     # if show_plots:
     #     plt.show()
     # fig = plt.gcf()
-    plt.savefig(result_dir + 'pareto' + ".pdf", figsize=figsize, dpi=dpi, bbox_inches='tight', format='pdf')
+    plt.savefig(result_dir + 'pareto-' + divergence + ".pdf", figsize=figsize, dpi=dpi, bbox_inches='tight', format='pdf')

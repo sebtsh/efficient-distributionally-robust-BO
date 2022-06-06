@@ -60,8 +60,8 @@ def main(obj_func_name, action_dims, context_dims, action_lowers, action_uppers,
     Path(plot_dir).mkdir(parents=True, exist_ok=True)
     Path(result_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['MMD_approx']
-    acquisitions = ['DRBOGeneral']
+    divergences = ['MMD_approx', 'TV', 'modified_chi_squared', 'wass']
+    acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
     ref_means = np.array([[0., 0., 0.], [1., 0., 0.]])
     ref_cov = ref_var * np.eye(context_dims)
 

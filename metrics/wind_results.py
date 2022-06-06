@@ -34,7 +34,7 @@ def main(obj_func_name, num_init_points, num_months, num_bo_iters, beta, seed, s
     indiv_results_dir = "runs/" + obj_func_name + "/indiv_results/"
     Path(sum_results_dir).mkdir(parents=True, exist_ok=True)
 
-    divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
+    divergences = ['MMD_approx', 'TV', 'modified_chi_squared', 'wass']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
 
     color_dict = {'GP-UCB': '#d7263d',

@@ -15,7 +15,7 @@ ex.observers.append(FileStorageObserver('../runs'))
 
 
 @ex.named_config
-def rand_func():
+def default():
     show_plots = False
     figsize = (8, 6)
     dpi = 200
@@ -31,8 +31,8 @@ def main(show_plots, figsize, dpi):
 
     result_dir = "runs/timing/"
     Path(result_dir).mkdir(parents=True, exist_ok=True)
-    context_grid_densities = np.arange(300, 3000, 300)
-    divergences = ['MMD_approx', 'TV', 'modified_chi_squared']
+    context_grid_densities = np.arange(100, 901, 100)
+    divergences = ['MMD_approx', 'TV', 'modified_chi_squared', 'wass']
     acquisitions = ['GP-UCB', 'DRBOGeneral', 'DRBOWorstCaseSens', 'DRBOMidApprox']
     color_dict = {'GP-UCB': '#d7263d',
                   'DRBOGeneral': '#fbb13c',
